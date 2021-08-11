@@ -15,15 +15,3 @@ ThumbnailView::ThumbnailView(QWidget *parent) : QListView(parent)
     setHorizontalScrollMode(ScrollPerPixel);
     verticalScrollBar()->setSingleStep(40);
 }
-
-
-void
-ThumbnailView::setModel(QAbstractItemModel *model)
-{
-    qDebug() << "ThumbnailView::setModel()";
-    QListView::setModel(model);
-    connect(this->selectionModel(), &QItemSelectionModel::selectionChanged,
-            (ThumbnailModel*)this->model(), &ThumbnailModel::handleSelection);
-    connect(this, &ThumbnailView::doubleClicked,
-            (ThumbnailModel*)this->model(), &ThumbnailModel::handleDoubleClick);
-}

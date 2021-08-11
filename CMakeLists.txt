@@ -26,6 +26,8 @@ add_executable(tagbrowser
   TagWidget.cpp
   TagEdit.hpp
   TagEdit.cpp
+  FilterWidget.hpp
+  FilterWidget.cpp
   )
 
 find_package(KF5KIO REQUIRED)

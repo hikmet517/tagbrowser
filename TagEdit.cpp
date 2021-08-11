@@ -59,10 +59,10 @@ TagEdit::handleClicked()
 {
     QString tag = mLineEdit->text();
     if(mReadOnly) {
-        static_cast<TagWidget*>(parent())->removeTag(tag);
+        emit removeTagClicked(tag);
     }
     else {
-        static_cast<TagWidget*>(parent())->addTag(tag);
+        emit addTagClicked(tag);
     }
 }
 

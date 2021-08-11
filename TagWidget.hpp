@@ -6,13 +6,15 @@ class QVBoxLayout;
 
 class TagWidget : public QWidget
 {
+Q_OBJECT
 public:
     TagWidget(const QStringList& tags, const QStringList& allTags, QWidget *parent=nullptr);
     ~TagWidget();
-    void addTag(const QString& tag);
-    void removeTag(const QString& tag);
-    void clearLayout();
+    // void clearLayout();
     void setFocus();
+signals:
+    void addTagClicked(const QString& tag);
+    void removeTagClicked(const QString& tag);
 private:
     QVBoxLayout *mLayout;
     QStringList mAllTags;

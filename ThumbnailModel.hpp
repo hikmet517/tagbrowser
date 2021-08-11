@@ -12,6 +12,7 @@
 
 class ThumbnailModel : public QAbstractListModel
 {
+    Q_OBJECT
 public:
     ThumbnailModel(const QString &dir, QObject *parent = nullptr);
     ThumbnailModel(const QStringList &dirs, QObject *parent = nullptr);
@@ -24,19 +25,20 @@ public:
 
     void handleThumbSuccess(const KFileItem& item, const QPixmap& preview);
     void handleThumbFail(const KFileItem& item);
-    void handleSelection(const QItemSelection &selected, const QItemSelection &deselected);
-    void handleDoubleClick(const QModelIndex &index);
 
     void getTagsFromDB();
     QStringList getSelectedTags();
     QStringList getSelectedPaths();
     bool hasSelected();
     QStringList getAllTags();
-private:
-    QString mDir;
+
+    // fix here
     QList<FileData> mData;
+    QSet<int> mSelected;
+    QString mDir;
     QMimeDatabase mMimeDB;
     QString mDBPath;
     QStringList mAllTags;
-    QSet<int> mSelected;
+
+private:
 };

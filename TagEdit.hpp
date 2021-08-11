@@ -11,6 +11,7 @@ class QCompleter;
 
 class TagEdit : public QWidget
 {
+    Q_OBJECT
 public:
     TagEdit(const QStringList& completionList, QWidget *parent = nullptr);
     TagEdit(const QString& tag, QWidget *parent = nullptr);
@@ -18,6 +19,9 @@ public:
     QString getText();
     void setFocus();
     ~TagEdit();
+signals:
+    void addTagClicked(const QString& tag);
+    void removeTagClicked(const QString& tag);
 protected:
     void keyPressEvent(QKeyEvent* event) override;
 private:

@@ -5,12 +5,12 @@
 #include <QAbstractItemModel>
 #include <QDirIterator>
 #include <QListView>
-#include <QProcess>
 #include <QVariant>
 #include <QDebug>
 #include <QIcon>
 
 #include <KIO/PreviewJob>
+#include <qnamespace.h>
 
 
 ThumbnailModel::ThumbnailModel(const QString &dir, QObject *parent)
@@ -105,15 +105,21 @@ ThumbnailModel::rowCount(const QModelIndex &parent) const
 QVariant
 ThumbnailModel::data(const QModelIndex &index, int role) const
 {
-    if(role == Qt::DisplayRole || role == Qt::ToolTipRole) {
+    if(role == Qt::DisplayRole) {
         return mData[index.row()].url.fileName();
+    }
+    else if(role == Qt::ToolTipRole){
+        return mData[index.row()].url.path();
     }
     else if(role == Qt::DecorationRole){
         return mData[index.row()].pm;
     }
-    // else if(role == Qt::SizeHintRole){
-    //     return QSize(290, 290);
-    // }
+    else if(role == Qt::SizeHintRole){
+        return QSize(290, 290);
+    }
+    else if(role == Qt::TextAlignmentRole) {
+        return int(Qt::AlignHCenter | Qt::AlignTop);
+    }
     return QVariant();
 }
 
@@ -168,21 +174,6 @@ ThumbnailModel::handleThumbFail(const KFileItem& item)
 }
 
 
-void
-ThumbnailModel::handleSelection(const QItemSelection &selected, const QItemSelection &deselected)
-{
-    qDebug() << "ThumbnailModel::handleSelection()";
-    for(const auto& index : selected.indexes()) {
-        mSelected.insert(index.row());
-    }
-    for(const auto& index : deselected.indexes()) {
-        mSelected.remove(index.row());
-    }
-    MainWindow *mw = static_cast<MainWindow*>(parent());
-    mw->refreshTagWidget();
-}
-
-
 QStringList
 ThumbnailModel::getSelectedTags()
 {
@@ -221,18 +212,4 @@ QStringList
 ThumbnailModel::getAllTags()
 {
     return mAllTags;
-}
-
-
-void
-ThumbnailModel::handleDoubleClick(const QModelIndex &index)
-{
-    // for windows start (cmd) or Invoke-Item (powershell)
-    QProcess p(this);
-    QStringList args;
-    args << mData[index.row()].url.path();
-    p.setProgram("xdg-open");
-    p.setArguments(args);
-    qint64 pid;
-    p.startDetached(&pid);
 }

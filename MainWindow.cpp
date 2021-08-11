@@ -15,17 +15,21 @@
 #include <QDockWidget>
 #include <QToolBar>
 #include <QFileInfo>
+#include <QSortFilterProxyModel>
+#include <QProcess>
 
 #include <iostream>
+#include <qsortfilterproxymodel.h>
 
 #include "MainWindow.hpp"
 #include "ThumbnailModel.hpp"
 #include "ThumbnailView.hpp"
+#include "FilterWidget.hpp"
 #include "TMSU.hpp"
 
 
 MainWindow::MainWindow()
-    : QMainWindow(), mModel(nullptr), mView(nullptr), mDock(nullptr), mTagWidget(nullptr)
+    : QMainWindow(), mModel(nullptr), mView(nullptr), mDock(nullptr), mTagWidget(nullptr), mFilterPathProxyModel(nullptr)
 {
     qDebug() << "MainWindow::MainWindow()";
     createMenus();
@@ -33,7 +37,7 @@ MainWindow::MainWindow()
 
 
 MainWindow::MainWindow(const QString &dir)
-    : QMainWindow(), mModel(nullptr), mView(nullptr), mDock(nullptr), mTagWidget(nullptr)
+    : QMainWindow(), mModel(nullptr), mView(nullptr), mDock(nullptr), mTagWidget(nullptr), mFilterPathProxyModel(nullptr)
 {
     qDebug() << "MainWindow::MainWindow(QString)";
     createMenus();
@@ -60,13 +64,20 @@ MainWindow::createMenus()
     mSelectAct->setShortcuts({tr("Ctrl+A")});
     mSelectAct->setIcon(QIcon::fromTheme("edit-select-all"));
     mSelectAct->setDisabled(true);
+    connect(mSelectAct, &QAction::triggered, mView, &QAbstractItemView::selectAll);
     mToolBar->addAction(mSelectAct);
 
     mClearAct = new QAction(tr("&Clear Selection"), this);
     mClearAct->setShortcuts({tr("Ctrl+Shift+A")});
     mClearAct->setIcon(QIcon::fromTheme("edit-select-none"));
     mClearAct->setDisabled(true);
+    connect(mClearAct, &QAction::triggered, mView, &QAbstractItemView::clearSelection);
     mToolBar->addAction(mClearAct);
+
+    mFilterPathWidget = new FilterWidget(this);
+    mFilterPathWidget->setPlaceholderText("Filter by path");
+    connect(mFilterPathWidget, &FilterWidget::filterChanged, this, &MainWindow::pathFilterChanged);
+    mToolBar->addWidget(mFilterPathWidget);
 
     mEmpty = new QWidget();
     mEmpty->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
@@ -109,19 +120,58 @@ MainWindow::openDirectory()
 void
 MainWindow::startModelView(const QString& dir)
 {
-    if(!dir.isEmpty() && QDir(dir).exists()){
+    if(!dir.isEmpty() && QDir(dir).exists()) {
         mLastDir = dir;
         if(mModel) delete mModel;
 
-        connect(mClearAct, &QAction::triggered, mView, &QAbstractItemView::clearSelection);
         mClearAct->setEnabled(true);
-        connect(mSelectAct, &QAction::triggered, mView, &QAbstractItemView::selectAll);
         mSelectAct->setEnabled(true);
 
         mModel = new ThumbnailModel(dir, this);
-        mView->setModel(mModel);
+
+        if(mFilterPathProxyModel) delete mFilterPathProxyModel;
+        mFilterPathProxyModel = new QSortFilterProxyModel(this);
+        mFilterPathProxyModel->setSourceModel(mModel);
+        mFilterPathProxyModel->setFilterRole(Qt::ToolTipRole);
+        mView->setModel(mFilterPathProxyModel);
+
+
+        connect(mView->selectionModel(), &QItemSelectionModel::selectionChanged,
+                this, &MainWindow::handleSelection);
+        connect(mView, &ThumbnailView::doubleClicked,
+                this, &MainWindow::handleDoubleClick);
+
         refreshTagWidget();
     }
+}
+
+
+void
+MainWindow::handleSelection(const QItemSelection &selected, const QItemSelection &deselected)
+{
+    qDebug() << "MainWindow::handleSelection()";
+    for(const auto& index : selected.indexes()) {
+        mModel->mSelected.insert(mFilterPathProxyModel->mapToSource(index).row());
+    }
+    for(const auto& index : deselected.indexes()) {
+        mModel->mSelected.remove(mFilterPathProxyModel->mapToSource(index).row());
+    }
+    refreshTagWidget();
+}
+
+
+void
+MainWindow::handleDoubleClick(const QModelIndex &index)
+{
+    qDebug() << "MainWindow::handleDoubleClick()";
+    // for windows start (cmd) or Invoke-Item (powershell)
+    QProcess p(this);
+    QStringList args;
+    args << mModel->mData[mFilterPathProxyModel->mapToSource(index).row()].url.path();
+    p.setProgram("xdg-open");
+    p.setArguments(args);
+    qint64 pid;
+    p.startDetached(&pid);
 }
 
 
@@ -176,8 +226,18 @@ MainWindow::refreshTagWidget()
 
     if(mModel->hasSelected()) {
         mTagWidget = new TagWidget(mModel->getSelectedTags(), mModel->getAllTags(), mDock);
+        connect(mTagWidget, &TagWidget::addTagClicked, this, &MainWindow::addTag);
+        connect(mTagWidget, &TagWidget::removeTagClicked, this, &MainWindow::removeTag);
+
         mDock->setWidget(mTagWidget);
     }
+}
+
+
+void
+MainWindow::pathFilterChanged()
+{
+    mFilterPathProxyModel->setFilterFixedString(mFilterPathWidget->text());
 }
 
 
@@ -228,19 +288,21 @@ MainWindow::~MainWindow()
 {
     if(mModel)
         delete mModel;
-    if(mView)
-        delete mView;
     if(mDock)
         delete mDock;
     if(mTagWidget)
         delete mTagWidget;
+    if(mFilterPathProxyModel)
+        delete mFilterPathProxyModel;
 
     menuBar()->clear();
 
-    delete mOpenAct;
-    delete mExitAct;
-    delete mClearAct;
-    delete mSelectAct;
-    delete mEmpty;
     delete mToolBar;
+    delete mOpenAct;
+    delete mSelectAct;
+    delete mClearAct;
+    delete mFilterPathWidget;
+    delete mEmpty;
+    delete mExitAct;
+    delete mView;
 }
