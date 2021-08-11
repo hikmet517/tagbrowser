@@ -66,15 +66,17 @@ ThumbnailModel::getTagsFromDB()
     qDebug() << "ThumbnailModel::getTagsFromDB()";
     // read db
     QList<QList<QString>> tags = TMSU::getTags(mDBPath);
+    qDebug() << "mDBPath:" << mDBPath;
 
     // create a hash set and a list of all tags
     QSet<QString> allTags;
     QHash<QString, QSet<QString>> tagHashSet;
+    QDir root = QDir(mDBPath).canonicalPath();
+    root.cdUp();
+    root.cdUp();
+    mRootDir = root.absolutePath();
     for(int i=0; i<tags.size(); i++){
-        QDir root = QDir(mDBPath);
-        root.cdUp();
-        root.cdUp();
-        QString path = root.path() + QDir::separator() + tags[i][0]
+        QString path = mRootDir + QDir::separator() + tags[i][0]
             + QDir::separator() + tags[i][1];
         if(tagHashSet.contains(path))
             tagHashSet[path].insert(tags[i][2]);
@@ -90,6 +92,7 @@ ThumbnailModel::getTagsFromDB()
         if(tagHashSet.contains(path))
             mData[i].tags = tagHashSet[path];
     }
+    qDebug() << tagHashSet;
 }
 
 

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Tagbrowser
+Comment=Browse TMSU tags
+Exec=tagbrowser %U
+Terminal=false
+Icon=tagbrowser
+Type=Application
+Categories=Qt;Viewer;
+MimeType=inode/directory;
+X-DocPath=gwenview/index.html

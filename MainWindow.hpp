@@ -9,6 +9,8 @@ class ThumbnailModel;
 class ThumbnailView;
 class TagWidget;
 class FilterWidget;
+class FilterTagProxyModel;
+class QCompleter;
 
 class MainWindow : public QMainWindow
 {
@@ -31,6 +33,7 @@ private slots:
     void addTag(const QString& tag);
     void removeTag(const QString& tag);
     void pathFilterChanged();
+    void tagFilterChanged();
 
 private:
     void createMenus();
@@ -51,5 +54,9 @@ private:
     QWidget *mEmpty;
     QToolBar *mToolBar;
     FilterWidget *mFilterPathWidget;
+    FilterWidget *mFilterTagWidget;
     QSortFilterProxyModel *mFilterPathProxyModel;
+    FilterTagProxyModel *mFilterTagProxyModel;
+    QSortFilterProxyModel *mCurrentProxyModel;
+    QCompleter *mTagCompleter;
 };

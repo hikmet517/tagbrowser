@@ -1,7 +1,9 @@
 #include <QApplication>
+#include <QDir>
+#include <QCommandLineParser>
 #include <QDebug>
 #include <QLoggingCategory>
-#include <QCommandLineParser>
+#include <QScreen>
 
 #include <iostream>
 
@@ -28,9 +30,12 @@ int main(int argc, char *argv[])
     }
     else {
         QString dir = parser.positionalArguments().at(0);
-        mw = new MainWindow(dir);
+        mw = new MainWindow(QDir(dir).absolutePath());
     }
-    mw->resize(1200, 600);
+
+    QScreen *screen = QGuiApplication::primaryScreen();
+    QRect rect = screen->availableGeometry();
+    mw->resize(rect.width()*3/4, rect.height()*3/4);
     mw->setWindowTitle("Tag Browser");
     mw->show();
     return app.exec();

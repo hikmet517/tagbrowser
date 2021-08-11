@@ -17,19 +17,26 @@
 #include <QFileInfo>
 #include <QSortFilterProxyModel>
 #include <QProcess>
+#include <QCompleter>
 
 #include <iostream>
+#include <qcompleter.h>
+#include <qdir.h>
+#include <qglobal.h>
+#include <qnamespace.h>
+#include <qprocess.h>
 #include <qsortfilterproxymodel.h>
 
 #include "MainWindow.hpp"
 #include "ThumbnailModel.hpp"
 #include "ThumbnailView.hpp"
 #include "FilterWidget.hpp"
+#include "FilterTagProxyModel.hpp"
 #include "TMSU.hpp"
 
 
 MainWindow::MainWindow()
-    : QMainWindow(), mModel(nullptr), mView(nullptr), mDock(nullptr), mTagWidget(nullptr), mFilterPathProxyModel(nullptr)
+    : QMainWindow(), mModel(nullptr), mView(nullptr), mDock(nullptr), mTagWidget(nullptr), mFilterPathProxyModel(nullptr), mFilterTagProxyModel(nullptr), mTagCompleter(nullptr)
 {
     qDebug() << "MainWindow::MainWindow()";
     createMenus();
@@ -37,7 +44,7 @@ MainWindow::MainWindow()
 
 
 MainWindow::MainWindow(const QString &dir)
-    : QMainWindow(), mModel(nullptr), mView(nullptr), mDock(nullptr), mTagWidget(nullptr), mFilterPathProxyModel(nullptr)
+    : QMainWindow(), mModel(nullptr), mView(nullptr), mDock(nullptr), mTagWidget(nullptr), mFilterPathProxyModel(nullptr), mFilterTagProxyModel(nullptr), mTagCompleter(nullptr)
 {
     qDebug() << "MainWindow::MainWindow(QString)";
     createMenus();
@@ -63,21 +70,24 @@ MainWindow::createMenus()
     mSelectAct = new QAction(tr("Select &All"), this);
     mSelectAct->setShortcuts({tr("Ctrl+A")});
     mSelectAct->setIcon(QIcon::fromTheme("edit-select-all"));
-    mSelectAct->setDisabled(true);
-    connect(mSelectAct, &QAction::triggered, mView, &QAbstractItemView::selectAll);
     mToolBar->addAction(mSelectAct);
+    mSelectAct->setDisabled(true);
 
     mClearAct = new QAction(tr("&Clear Selection"), this);
     mClearAct->setShortcuts({tr("Ctrl+Shift+A")});
     mClearAct->setIcon(QIcon::fromTheme("edit-select-none"));
-    mClearAct->setDisabled(true);
-    connect(mClearAct, &QAction::triggered, mView, &QAbstractItemView::clearSelection);
     mToolBar->addAction(mClearAct);
+    mClearAct->setDisabled(true);
 
     mFilterPathWidget = new FilterWidget(this);
     mFilterPathWidget->setPlaceholderText("Filter by path");
-    connect(mFilterPathWidget, &FilterWidget::filterChanged, this, &MainWindow::pathFilterChanged);
+    connect(mFilterPathWidget, &FilterWidget::textChanged, this, &MainWindow::pathFilterChanged);
     mToolBar->addWidget(mFilterPathWidget);
+
+    mFilterTagWidget = new FilterWidget(this);
+    mFilterTagWidget->setPlaceholderText("Filter by tag");
+    connect(mFilterTagWidget, &FilterWidget::returnPressed, this, &MainWindow::tagFilterChanged);
+    mToolBar->addWidget(mFilterTagWidget);
 
     mEmpty = new QWidget();
     mEmpty->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
@@ -113,7 +123,7 @@ MainWindow::openDirectory()
     QString dir = QFileDialog::getExistingDirectory(this, tr("Open Directory"),
                                                     defaultDir,
                                                     QFileDialog::ShowDirsOnly);
-    startModelView(dir);
+    startModelView(QDir(dir).canonicalPath());
 }
 
 
@@ -122,19 +132,32 @@ MainWindow::startModelView(const QString& dir)
 {
     if(!dir.isEmpty() && QDir(dir).exists()) {
         mLastDir = dir;
-        if(mModel) delete mModel;
 
-        mClearAct->setEnabled(true);
         mSelectAct->setEnabled(true);
+        connect(mSelectAct, &QAction::triggered, mView, &QAbstractItemView::selectAll);
+        mClearAct->setEnabled(true);
+        connect(mClearAct, &QAction::triggered, mView, &QAbstractItemView::clearSelection);
 
+        if(mModel) delete mModel;
         mModel = new ThumbnailModel(dir, this);
+
+        if(mTagCompleter) delete mTagCompleter;
+        mTagCompleter = new QCompleter(mModel->mAllTags, this);
+        mTagCompleter->setCaseSensitivity(Qt::CaseInsensitive);
+        mTagCompleter->setFilterMode(Qt::MatchContains);
+        mFilterTagWidget->setCompleter(mTagCompleter);
 
         if(mFilterPathProxyModel) delete mFilterPathProxyModel;
         mFilterPathProxyModel = new QSortFilterProxyModel(this);
-        mFilterPathProxyModel->setSourceModel(mModel);
         mFilterPathProxyModel->setFilterRole(Qt::ToolTipRole);
-        mView->setModel(mFilterPathProxyModel);
+        mFilterPathProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
+        mFilterPathProxyModel->setSourceModel(mModel);
 
+        if(mFilterTagProxyModel) delete mFilterTagProxyModel;
+        mFilterTagProxyModel = new FilterTagProxyModel(this);
+
+        mView->setModel(mFilterPathProxyModel);
+        mCurrentProxyModel = mFilterPathProxyModel;
 
         connect(mView->selectionModel(), &QItemSelectionModel::selectionChanged,
                 this, &MainWindow::handleSelection);
@@ -151,10 +174,10 @@ MainWindow::handleSelection(const QItemSelection &selected, const QItemSelection
 {
     qDebug() << "MainWindow::handleSelection()";
     for(const auto& index : selected.indexes()) {
-        mModel->mSelected.insert(mFilterPathProxyModel->mapToSource(index).row());
+        mModel->mSelected.insert(mCurrentProxyModel->mapToSource(index).row());
     }
     for(const auto& index : deselected.indexes()) {
-        mModel->mSelected.remove(mFilterPathProxyModel->mapToSource(index).row());
+        mModel->mSelected.remove(mCurrentProxyModel->mapToSource(index).row());
     }
     refreshTagWidget();
 }
@@ -167,7 +190,7 @@ MainWindow::handleDoubleClick(const QModelIndex &index)
     // for windows start (cmd) or Invoke-Item (powershell)
     QProcess p(this);
     QStringList args;
-    args << mModel->mData[mFilterPathProxyModel->mapToSource(index).row()].url.path();
+    args << mModel->mData[mCurrentProxyModel->mapToSource(index).row()].url.path();
     p.setProgram("xdg-open");
     p.setArguments(args);
     qint64 pid;
@@ -237,8 +260,48 @@ MainWindow::refreshTagWidget()
 void
 MainWindow::pathFilterChanged()
 {
-    mFilterPathProxyModel->setFilterFixedString(mFilterPathWidget->text());
+    qDebug() << "MainWindow::pathFilterChanged()";
+    mFilterPathProxyModel->setSourceModel(mModel);
+    mFilterPathProxyModel->setFilterRegExp(mFilterPathWidget->text());
+    mView->setModel(mFilterPathProxyModel);
+    mCurrentProxyModel = mFilterPathProxyModel;
 }
+
+void
+MainWindow::tagFilterChanged()
+{
+    qDebug() << "MainWindow::tagFilterChanged()";
+
+    QString text = mFilterTagWidget->text();
+    mFilterTagProxyModel->mFilteredData.clear();
+    if(!text.isEmpty()) {
+        QProcess p(this);
+        QStringList args;
+        args << "files" << text;
+        p.setProgram("tmsu");
+        p.setArguments(args);
+        p.setWorkingDirectory(mModel->mRootDir);
+        p.setReadChannel(QProcess::StandardOutput);
+        p.start();
+        p.waitForFinished(-1);
+
+        QString out = QString(p.readAllStandardOutput()).trimmed();
+        QStringList lines = out.split('\n');
+
+        for(const auto& line : lines) {
+            if(line.isEmpty())
+                continue;
+            QString temp = mModel->mRootDir + line.mid(1);
+            mFilterTagProxyModel->mFilteredData.insert(temp);
+        }
+    }
+
+    mFilterTagProxyModel->setSourceModel(mModel);
+    mFilterTagProxyModel->setFilterFixedString(text);
+    mView->setModel(mFilterTagProxyModel);
+    mCurrentProxyModel = mFilterTagProxyModel;
+}
+
 
 
 // https://doc.qt.io/qt-5/dnd.html

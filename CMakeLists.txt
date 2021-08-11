@@ -28,6 +28,8 @@ add_executable(tagbrowser
   TagEdit.cpp
   FilterWidget.hpp
   FilterWidget.cpp
+  FilterTagProxyModel.hpp
+  FilterTagProxyModel.cpp
   )
 
 find_package(KF5KIO REQUIRED)
