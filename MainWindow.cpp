@@ -163,9 +163,8 @@ MainWindow::startModelView(const QString& dir)
 
         if(mFilterTagProxyModel) delete mFilterTagProxyModel;
         mFilterTagProxyModel = new FilterTagProxyModel(this);
-
-        mView->setModel(mFilterPathProxyModel);
-        mCurrentProxyModel = mFilterPathProxyModel;
+        mFilterTagProxyModel->setSourceModel(mFilterPathProxyModel);
+        mView->setModel(mFilterTagProxyModel);
 
         connect(mView->selectionModel(), &QItemSelectionModel::selectionChanged,
                 this, &MainWindow::handleSelection);
@@ -182,10 +181,10 @@ MainWindow::handleSelection(const QItemSelection &selected, const QItemSelection
 {
     qDebug() << "MainWindow::handleSelection()";
     for(const auto& index : selected.indexes()) {
-        mModel->mSelected.insert(mCurrentProxyModel->mapToSource(index).row());
+        mModel->mSelected.insert(mFilterPathProxyModel->mapToSource(mFilterTagProxyModel->mapToSource(index)).row());
     }
     for(const auto& index : deselected.indexes()) {
-        mModel->mSelected.remove(mCurrentProxyModel->mapToSource(index).row());
+        mModel->mSelected.remove(mFilterPathProxyModel->mapToSource(mFilterTagProxyModel->mapToSource(index)).row());
     }
     refreshTagWidget();
 }
@@ -198,7 +197,7 @@ MainWindow::handleDoubleClick(const QModelIndex &index)
     // for windows start (cmd) or Invoke-Item (powershell)
     QProcess p(this);
     QStringList args;
-    args << mModel->mData[mCurrentProxyModel->mapToSource(index).row()].url.path();
+    args << mModel->mData[mFilterPathProxyModel->mapToSource(mFilterTagProxyModel->mapToSource(index)).row()].url.path();
     p.setProgram("xdg-open");
     p.setArguments(args);
     qint64 pid;
@@ -271,12 +270,7 @@ MainWindow::pathFilterChanged()
     qDebug() << "MainWindow::pathFilterChanged()";
     mModel->mSelected.clear();
     mView->clearSelection();
-    mFilterPathProxyModel->setSourceModel(mModel);
     mFilterPathProxyModel->setFilterRegExp(mFilterPathWidget->text());
-    mView->setModel(mFilterPathProxyModel);
-    connect(mView->selectionModel(), &QItemSelectionModel::selectionChanged,
-            this, &MainWindow::handleSelection);
-    mCurrentProxyModel = mFilterPathProxyModel;
 }
 
 void
@@ -316,13 +310,7 @@ MainWindow::tagFilterChanged()
             mFilterTagProxyModel->mFilteredData.insert(temp);
         }
     }
-
-    mFilterTagProxyModel->setSourceModel(mModel);
     mFilterTagProxyModel->setFilterFixedString(text);
-    mView->setModel(mFilterTagProxyModel);
-    connect(mView->selectionModel(), &QItemSelectionModel::selectionChanged,
-            this, &MainWindow::handleSelection);
-    mCurrentProxyModel = mFilterTagProxyModel;
 }
 
 

@@ -57,7 +57,6 @@ private:
     FilterWidget *mFilterTagWidget;
     QSortFilterProxyModel *mFilterPathProxyModel;
     FilterTagProxyModel *mFilterTagProxyModel;
-    QSortFilterProxyModel *mCurrentProxyModel;
     QCompleter *mTagCompleter;
     QCompleter *mPathCompleter;
 };
