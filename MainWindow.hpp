@@ -59,4 +59,5 @@ private:
     FilterTagProxyModel *mFilterTagProxyModel;
     QSortFilterProxyModel *mCurrentProxyModel;
     QCompleter *mTagCompleter;
+    QCompleter *mPathCompleter;
 };

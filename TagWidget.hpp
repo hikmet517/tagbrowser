@@ -2,6 +2,7 @@
 #include <QWidget>
 
 class QVBoxLayout;
+class TagEdit;
 
 
 class TagWidget : public QWidget
@@ -16,6 +17,7 @@ signals:
     void addTagClicked(const QString& tag);
     void removeTagClicked(const QString& tag);
 private:
+    QList<TagEdit*> mWidgets;
     QVBoxLayout *mLayout;
     QStringList mAllTags;
 };

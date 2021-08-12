@@ -8,6 +8,7 @@
 #include <QVariant>
 #include <QDebug>
 #include <QIcon>
+#include <QSet>
 
 #include <KIO/PreviewJob>
 #include <qnamespace.h>
@@ -66,7 +67,6 @@ ThumbnailModel::getTagsFromDB()
     qDebug() << "ThumbnailModel::getTagsFromDB()";
     // read db
     QList<QList<QString>> tags = TMSU::getTags(mDBPath);
-    qDebug() << "mDBPath:" << mDBPath;
 
     // create a hash set and a list of all tags
     QSet<QString> allTags;
@@ -76,8 +76,8 @@ ThumbnailModel::getTagsFromDB()
     root.cdUp();
     mRootDir = root.absolutePath();
     for(int i=0; i<tags.size(); i++){
-        QString path = mRootDir + QDir::separator() + tags[i][0]
-            + QDir::separator() + tags[i][1];
+        QString path = QDir(mRootDir + QDir::separator() + tags[i][0]
+                            + QDir::separator() + tags[i][1]).canonicalPath();
         if(tagHashSet.contains(path))
             tagHashSet[path].insert(tags[i][2]);
         else
@@ -91,8 +91,9 @@ ThumbnailModel::getTagsFromDB()
         const auto& path = mData[i].url.path();
         if(tagHashSet.contains(path))
             mData[i].tags = tagHashSet[path];
+        else
+            mData[i].tags.clear();
     }
-    qDebug() << tagHashSet;
 }
 
 
@@ -153,8 +154,8 @@ ThumbnailModel::handleThumbSuccess(const KFileItem& item, const QPixmap& preview
     for(int i=0; i<mData.size(); i++){
         if(mData[i].url == item.url()) {
             mData[i].pm = preview;
-            QModelIndex topLeft = createIndex(i, 0);
-            emit dataChanged(topLeft, topLeft, {Qt::DecorationRole});
+            // QModelIndex topLeft = createIndex(i, 0);
+            // emit dataChanged(topLeft, topLeft, {Qt::DecorationRole});
             break;
         }
     }
@@ -169,8 +170,8 @@ ThumbnailModel::handleThumbFail(const KFileItem& item)
         if(mData[i].url == item.url()) {
             QMimeType mt = mMimeDB.mimeTypeForFile(mData[i].url.path());
             mData[i].pm = QIcon::fromTheme(mt.name()).pixmap(256);
-            QModelIndex topLeft = createIndex(i, 0);
-            emit dataChanged(topLeft, topLeft, {Qt::DecorationRole});
+            // QModelIndex topLeft = createIndex(i, 0);
+            // emit dataChanged(topLeft, topLeft, {Qt::DecorationRole});
             break;
         }
     }

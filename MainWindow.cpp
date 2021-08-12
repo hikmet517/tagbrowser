@@ -36,7 +36,9 @@
 
 
 MainWindow::MainWindow()
-    : QMainWindow(), mModel(nullptr), mView(nullptr), mDock(nullptr), mTagWidget(nullptr), mFilterPathProxyModel(nullptr), mFilterTagProxyModel(nullptr), mTagCompleter(nullptr)
+    : QMainWindow(), mModel(nullptr), mView(nullptr), mDock(nullptr),
+      mTagWidget(nullptr), mFilterPathProxyModel(nullptr), mFilterTagProxyModel(nullptr),
+      mTagCompleter(nullptr), mPathCompleter(nullptr)
 {
     qDebug() << "MainWindow::MainWindow()";
     createMenus();
@@ -44,7 +46,9 @@ MainWindow::MainWindow()
 
 
 MainWindow::MainWindow(const QString &dir)
-    : QMainWindow(), mModel(nullptr), mView(nullptr), mDock(nullptr), mTagWidget(nullptr), mFilterPathProxyModel(nullptr), mFilterTagProxyModel(nullptr), mTagCompleter(nullptr)
+    : QMainWindow(), mModel(nullptr), mView(nullptr), mDock(nullptr),
+      mTagWidget(nullptr), mFilterPathProxyModel(nullptr), mFilterTagProxyModel(nullptr),
+      mTagCompleter(nullptr), mPathCompleter(nullptr)
 {
     qDebug() << "MainWindow::MainWindow(QString)";
     createMenus();
@@ -80,12 +84,16 @@ MainWindow::createMenus()
     mClearAct->setDisabled(true);
 
     mFilterPathWidget = new FilterWidget(this);
-    mFilterPathWidget->setPlaceholderText("Filter by path");
-    connect(mFilterPathWidget, &FilterWidget::textChanged, this, &MainWindow::pathFilterChanged);
+    mFilterPathWidget->setPlaceholderText("Filter by path using regex");
+    mPathCompleter = new QCompleter({".*.(mp4|avi|mkv|mov|wmv|mpg|mpeg|flv|webm|ogv|vob|rmvb|3gp|3gpp|ts|dat)$",
+            ".*.(jpg|jpeg|png|bmp|gif|webp)"}, this);
+    mPathCompleter->setFilterMode(Qt::MatchContains);
+    mFilterPathWidget->setCompleter(mPathCompleter);
+    connect(mFilterPathWidget, &FilterWidget::returnPressed, this, &MainWindow::pathFilterChanged);
     mToolBar->addWidget(mFilterPathWidget);
 
     mFilterTagWidget = new FilterWidget(this);
-    mFilterTagWidget->setPlaceholderText("Filter by tag");
+    mFilterTagWidget->setPlaceholderText("Filter by tag using boolean");
     connect(mFilterTagWidget, &FilterWidget::returnPressed, this, &MainWindow::tagFilterChanged);
     mToolBar->addWidget(mFilterTagWidget);
 
@@ -285,13 +293,21 @@ MainWindow::tagFilterChanged()
         p.start();
         p.waitForFinished(-1);
 
+        int res = p.exitCode();
+        if(res != 0) {
+            QMessageBox msg = QMessageBox(QMessageBox::Information,
+                                          "Query error",
+                                          "Process returned " + QString::number(res));
+            msg.exec();
+        }
+
         QString out = QString(p.readAllStandardOutput()).trimmed();
         QStringList lines = out.split('\n');
 
         for(const auto& line : lines) {
             if(line.isEmpty())
                 continue;
-            QString temp = mModel->mRootDir + line.mid(1);
+            QString temp = QDir(mModel->mRootDir + "/" + line).canonicalPath();
             mFilterTagProxyModel->mFilteredData.insert(temp);
         }
     }
@@ -368,4 +384,6 @@ MainWindow::~MainWindow()
     delete mEmpty;
     delete mExitAct;
     delete mView;
+    delete mTagCompleter;
+    delete mPathCompleter;
 }

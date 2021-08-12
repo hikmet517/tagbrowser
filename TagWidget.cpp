@@ -19,10 +19,12 @@ TagWidget::TagWidget(const QStringList& tags, const QStringList& allTags, QWidge
         connect(widget, &TagEdit::addTagClicked, this, &TagWidget::addTagClicked);
         connect(widget, &TagEdit::removeTagClicked, this, &TagWidget::removeTagClicked);
         mLayout->addWidget(widget);
+        mWidgets.append(widget);
     }
     TagEdit *widget = new TagEdit(allTags, this);
     connect(widget, &TagEdit::addTagClicked, this, &TagWidget::addTagClicked);
     connect(widget, &TagEdit::removeTagClicked, this, &TagWidget::removeTagClicked);
+    mWidgets.append(widget);
 
     mLayout->addWidget(widget);
     mLayout->setAlignment(Qt::AlignLeft | Qt::AlignTop);
@@ -45,11 +47,12 @@ void
 TagWidget::setFocus()
 {
     qDebug() << "TagWidget::setFocus()";
-    // static_cast<TagEdit*>(mLayout->itemAt(mLayout->count()-1)->widget())->setFocus();
-    mLayout->itemAt(mLayout->count()-1)->widget()->setFocus();
+    static_cast<TagEdit*>(mLayout->itemAt(mLayout->count()-1)->widget())->setFocus();
 }
 
 TagWidget::~TagWidget()
 {
+    for(auto widget : mWidgets)
+        delete widget;
     delete mLayout;
 }
