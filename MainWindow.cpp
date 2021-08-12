@@ -276,8 +276,6 @@ MainWindow::pathFilterChanged()
     mView->setModel(mFilterPathProxyModel);
     connect(mView->selectionModel(), &QItemSelectionModel::selectionChanged,
             this, &MainWindow::handleSelection);
-    connect(mView, &ThumbnailView::doubleClicked,
-            this, &MainWindow::handleDoubleClick);
     mCurrentProxyModel = mFilterPathProxyModel;
 }
 
@@ -324,8 +322,6 @@ MainWindow::tagFilterChanged()
     mView->setModel(mFilterTagProxyModel);
     connect(mView->selectionModel(), &QItemSelectionModel::selectionChanged,
             this, &MainWindow::handleSelection);
-    connect(mView, &ThumbnailView::doubleClicked,
-            this, &MainWindow::handleDoubleClick);
     mCurrentProxyModel = mFilterTagProxyModel;
 }
 
