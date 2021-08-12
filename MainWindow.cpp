@@ -269,9 +269,15 @@ void
 MainWindow::pathFilterChanged()
 {
     qDebug() << "MainWindow::pathFilterChanged()";
+    mModel->mSelected.clear();
+    mView->clearSelection();
     mFilterPathProxyModel->setSourceModel(mModel);
     mFilterPathProxyModel->setFilterRegExp(mFilterPathWidget->text());
     mView->setModel(mFilterPathProxyModel);
+    connect(mView->selectionModel(), &QItemSelectionModel::selectionChanged,
+            this, &MainWindow::handleSelection);
+    connect(mView, &ThumbnailView::doubleClicked,
+            this, &MainWindow::handleDoubleClick);
     mCurrentProxyModel = mFilterPathProxyModel;
 }
 
@@ -279,7 +285,8 @@ void
 MainWindow::tagFilterChanged()
 {
     qDebug() << "MainWindow::tagFilterChanged()";
-
+    mModel->mSelected.clear();
+    mView->clearSelection();
     QString text = mFilterTagWidget->text();
     mFilterTagProxyModel->mFilteredData.clear();
     if(!text.isEmpty()) {
@@ -315,6 +322,10 @@ MainWindow::tagFilterChanged()
     mFilterTagProxyModel->setSourceModel(mModel);
     mFilterTagProxyModel->setFilterFixedString(text);
     mView->setModel(mFilterTagProxyModel);
+    connect(mView->selectionModel(), &QItemSelectionModel::selectionChanged,
+            this, &MainWindow::handleSelection);
+    connect(mView, &ThumbnailView::doubleClicked,
+            this, &MainWindow::handleDoubleClick);
     mCurrentProxyModel = mFilterTagProxyModel;
 }
 

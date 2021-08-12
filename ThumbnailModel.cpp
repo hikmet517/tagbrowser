@@ -78,11 +78,15 @@ ThumbnailModel::getTagsFromDB()
     for(int i=0; i<tags.size(); i++){
         QString path = QDir(mRootDir + QDir::separator() + tags[i][0]
                             + QDir::separator() + tags[i][1]).canonicalPath();
+
+        QString tag = tags[i][2];
+        if(!tags[i][3].isEmpty())
+            tag += "=" + tags[i][3];
         if(tagHashSet.contains(path))
-            tagHashSet[path].insert(tags[i][2]);
+            tagHashSet[path].insert(tag);
         else
-            tagHashSet[path] = QSet({tags[i][2]});
-        allTags.insert(tags[i][2]);
+            tagHashSet[path] = QSet({tag});
+        allTags.insert(tag);
     }
     mAllTags = allTags.values();
 
@@ -181,6 +185,7 @@ ThumbnailModel::handleThumbFail(const KFileItem& item)
 QStringList
 ThumbnailModel::getSelectedTags()
 {
+    qDebug() << "ThumbnailModel::getSelectedTags()";
     QSetIterator<int> i(mSelected);
     QSet<QString> set;
     if(i.hasNext())

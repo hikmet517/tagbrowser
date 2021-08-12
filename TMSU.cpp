@@ -51,10 +51,12 @@ TMSU::getTags(const QString& dbPath)
         sqlite3_close(db);
         return {};
     }
-    char sql[] = "SELECT file.directory, file.name as filename, tag.name AS tag FROM \
+
+    char sql[] = "SELECT file.directory, file.name as filename, tag.name AS tag, value.name value FROM \
                   file \
                   INNER JOIN file_tag ON file.id = file_tag.file_id \
-                  INNER JOIN tag ON file_tag.tag_id = tag.id";
+                  INNER JOIN tag ON file_tag.tag_id = tag.id \
+                  LEFT JOIN value ON file_tag.value_id = value.id";
 
     QList<QList<QString>> data;
     rc = sqlite3_exec(db, sql, callback, &data, &zErrMsg);
