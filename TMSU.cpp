@@ -79,12 +79,10 @@ TMSU::addTag(const QString& tag, const QStringList& files)
         return 0;
     QProcess p;
     QStringList args;
-    args << "tag" << "--tags" << tag;
+    args << "tag" << "--tags" << tag << files;
     QDir wdir(files[0]);
     wdir.cdUp();
     p.setWorkingDirectory(wdir.path());
-    for(const auto& file : files)
-        args.append(file);
 
     p.start("tmsu", args);
     p.waitForFinished(-1);

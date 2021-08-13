@@ -13,7 +13,7 @@ FilterTagProxyModel::FilterTagProxyModel(QObject *parent)
 bool
 FilterTagProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const
 {
-    if(mFilteredData.isEmpty())
+    if(filterRegExp().isEmpty())
         return true;
     QModelIndex index = sourceModel()->index(sourceRow, 0, sourceParent);
     QString data = sourceModel()->data(index, Qt::ToolTipRole).toString();

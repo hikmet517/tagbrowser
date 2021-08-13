@@ -150,7 +150,7 @@ MainWindow::startModelView(const QString& dir)
         mModel = new ThumbnailModel(dir, this);
 
         if(mTagCompleter) delete mTagCompleter;
-        mTagCompleter = new QCompleter(mModel->mAllTags, this);
+        mTagCompleter = new QCompleter(QStringList() << mModel->mAllTags << "%UNTAGGED%", this);
         mTagCompleter->setCaseSensitivity(Qt::CaseInsensitive);
         mTagCompleter->setFilterMode(Qt::MatchContains);
         mFilterTagWidget->setCompleter(mTagCompleter);
@@ -281,10 +281,15 @@ MainWindow::tagFilterChanged()
     mView->clearSelection();
     QString text = mFilterTagWidget->text();
     mFilterTagProxyModel->mFilteredData.clear();
+
+    QStringList args;
+    if(text.toLower() == "%untagged%")
+        args << "untagged";
+    else
+        args << "files" << text;
+
     if(!text.isEmpty()) {
         QProcess p(this);
-        QStringList args;
-        args << "files" << text;
         p.setProgram("tmsu");
         p.setArguments(args);
         p.setWorkingDirectory(mModel->mRootDir);
@@ -360,14 +365,10 @@ MainWindow::dropEvent(QDropEvent* event)
 
 MainWindow::~MainWindow()
 {
-    if(mModel)
-        delete mModel;
-    if(mDock)
-        delete mDock;
-    if(mTagWidget)
-        delete mTagWidget;
-    if(mFilterPathProxyModel)
-        delete mFilterPathProxyModel;
+    if(mModel) delete mModel;
+    if(mDock) delete mDock;
+    if(mTagWidget) delete mTagWidget;
+    if(mFilterPathProxyModel) delete mFilterPathProxyModel;
 
     menuBar()->clear();
 
@@ -379,6 +380,6 @@ MainWindow::~MainWindow()
     delete mEmpty;
     delete mExitAct;
     delete mView;
-    delete mTagCompleter;
+    if(mTagCompleter) delete mTagCompleter;;
     delete mPathCompleter;
 }
