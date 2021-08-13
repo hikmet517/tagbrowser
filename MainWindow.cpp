@@ -20,12 +20,6 @@
 #include <QCompleter>
 
 #include <iostream>
-#include <qcompleter.h>
-#include <qdir.h>
-#include <qglobal.h>
-#include <qnamespace.h>
-#include <qprocess.h>
-#include <qsortfilterproxymodel.h>
 
 #include "MainWindow.hpp"
 #include "ThumbnailModel.hpp"
@@ -37,27 +31,25 @@
 
 MainWindow::MainWindow()
     : QMainWindow(), mModel(nullptr), mView(nullptr), mDock(nullptr),
-      mTagWidget(nullptr), mFilterPathProxyModel(nullptr), mFilterTagProxyModel(nullptr),
-      mTagCompleter(nullptr), mPathCompleter(nullptr)
+      mTagWidget(nullptr), mFilterPathProxyModel(nullptr), mFilterTagProxyModel(nullptr)
 {
     qDebug() << "MainWindow::MainWindow()";
-    createMenus();
+    setupWidgets();
 }
 
 
 MainWindow::MainWindow(const QString &dir)
     : QMainWindow(), mModel(nullptr), mView(nullptr), mDock(nullptr),
-      mTagWidget(nullptr), mFilterPathProxyModel(nullptr), mFilterTagProxyModel(nullptr),
-      mTagCompleter(nullptr), mPathCompleter(nullptr)
+      mTagWidget(nullptr), mFilterPathProxyModel(nullptr), mFilterTagProxyModel(nullptr)
 {
     qDebug() << "MainWindow::MainWindow(QString)";
-    createMenus();
+    setupWidgets();
     startModelView(dir);
 }
 
 
 void
-MainWindow::createMenus()
+MainWindow::setupWidgets()
 {
     // setup toolbar
     mToolBar = new QToolBar(this);
@@ -83,17 +75,13 @@ MainWindow::createMenus()
     mToolBar->addAction(mClearAct);
     mClearAct->setDisabled(true);
 
-    mFilterPathWidget = new FilterWidget(this);
-    mFilterPathWidget->setPlaceholderText("Filter by path using regex");
-    mPathCompleter = new QCompleter({".*.(mp4|avi|mkv|mov|wmv|mpg|mpeg|flv|webm|ogv|vob|rmvb|3gp|3gpp|ts|dat)$",
-            ".*.(jpg|jpeg|png|bmp|gif|webp)"}, this);
-    mPathCompleter->setFilterMode(Qt::MatchContains);
-    mFilterPathWidget->setCompleter(mPathCompleter);
+    mFilterPathWidget = new FilterWidget("Filter by path using regex",
+                                         {".*.(mp4|avi|mkv|mov|wmv|webm)$",
+                                          ".*.(jpg|jpeg|png|bmp|gif|webp)"}, this);
     connect(mFilterPathWidget, &FilterWidget::returnPressed, this, &MainWindow::pathFilterChanged);
     mToolBar->addWidget(mFilterPathWidget);
 
-    mFilterTagWidget = new FilterWidget(this);
-    mFilterTagWidget->setPlaceholderText("Filter by tag using boolean");
+    mFilterTagWidget = new FilterWidget("Filter by tag using boolean", this);
     connect(mFilterTagWidget, &FilterWidget::returnPressed, this, &MainWindow::tagFilterChanged);
     mToolBar->addWidget(mFilterTagWidget);
 
@@ -117,13 +105,13 @@ MainWindow::createMenus()
     // setup dock
     mDock = new QDockWidget("Tags", this);
     mDock->setFeatures(QDockWidget::DockWidgetMovable);
-    mDock->setMinimumWidth(200);
     addDockWidget(Qt::RightDockWidgetArea, mDock);
 
     setAcceptDrops(true);
 }
 
 
+// TODO: duplicated connects occurring here, clear previous session first
 void
 MainWindow::openDirectory()
 {
@@ -142,18 +130,14 @@ MainWindow::startModelView(const QString& dir)
         mLastDir = dir;
 
         mSelectAct->setEnabled(true);
-        connect(mSelectAct, &QAction::triggered, mView, &QAbstractItemView::selectAll);
+        connect(mSelectAct, &QAction::triggered, mView, &QAbstractItemView::selectAll, Qt::UniqueConnection);
         mClearAct->setEnabled(true);
-        connect(mClearAct, &QAction::triggered, mView, &QAbstractItemView::clearSelection);
+        connect(mClearAct, &QAction::triggered, mView, &QAbstractItemView::clearSelection, Qt::UniqueConnection);
 
         if(mModel) delete mModel;
         mModel = new ThumbnailModel(dir, this);
 
-        if(mTagCompleter) delete mTagCompleter;
-        mTagCompleter = new QCompleter(QStringList() << mModel->mAllTags << "%UNTAGGED%", this);
-        mTagCompleter->setCaseSensitivity(Qt::CaseInsensitive);
-        mTagCompleter->setFilterMode(Qt::MatchContains);
-        mFilterTagWidget->setCompleter(mTagCompleter);
+        mFilterTagWidget->setCompletions(QStringList() << mModel->mAllTags << "%UNTAGGED%");
 
         if(mFilterPathProxyModel) delete mFilterPathProxyModel;
         mFilterPathProxyModel = new QSortFilterProxyModel(this);
@@ -167,9 +151,9 @@ MainWindow::startModelView(const QString& dir)
         mView->setModel(mFilterTagProxyModel);
 
         connect(mView->selectionModel(), &QItemSelectionModel::selectionChanged,
-                this, &MainWindow::handleSelection);
+                this, &MainWindow::handleSelection, Qt::UniqueConnection);
         connect(mView, &ThumbnailView::doubleClicked,
-                this, &MainWindow::handleDoubleClick);
+                this, &MainWindow::handleDoubleClick, Qt::UniqueConnection);
 
         refreshTagWidget();
     }
@@ -214,6 +198,7 @@ MainWindow::addTag(const QString& tag)
         mModel->getTagsFromDB();
         refreshTagWidget();
         mTagWidget->setFocus();
+        mFilterTagWidget->setCompletions(QStringList() << mModel->mAllTags << "%UNTAGGED%");
     }
     else {
         QMessageBox msg = QMessageBox(QMessageBox::Information,
@@ -233,6 +218,7 @@ MainWindow::removeTag(const QString& tag)
         if(res == 0) {
             mModel->getTagsFromDB();
             refreshTagWidget();
+            mFilterTagWidget->setCompletions(QStringList() << mModel->mAllTags << "%UNTAGGED%");
         }
         else {
             QMessageBox msg = QMessageBox(QMessageBox::Information,
@@ -258,7 +244,6 @@ MainWindow::refreshTagWidget()
         mTagWidget = new TagWidget(mModel->getSelectedTags(), mModel->getAllTags(), mDock);
         connect(mTagWidget, &TagWidget::addTagClicked, this, &MainWindow::addTag);
         connect(mTagWidget, &TagWidget::removeTagClicked, this, &MainWindow::removeTag);
-
         mDock->setWidget(mTagWidget);
     }
 }
@@ -377,9 +362,8 @@ MainWindow::~MainWindow()
     delete mSelectAct;
     delete mClearAct;
     delete mFilterPathWidget;
+    delete mFilterTagWidget;
     delete mEmpty;
     delete mExitAct;
     delete mView;
-    if(mTagCompleter) delete mTagCompleter;;
-    delete mPathCompleter;
 }

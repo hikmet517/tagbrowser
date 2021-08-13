@@ -1,15 +1,14 @@
 #include "TagEdit.hpp"
 #include "TagWidget.hpp"
 #include "TMSU.hpp"
+
 #include <QIcon>
 #include <QDebug>
 #include <QKeyEvent>
-
 #include <QHBoxLayout>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QCompleter>
-
 
 
 // editable

@@ -1,9 +1,10 @@
 #include <QDir>
+#include <QDebug>
 #include <QProcess>
+
 #include <iostream>
-#include <qdebug.h>
-#include <qprocess.h>
 #include <sqlite3.h>
+
 #include "TMSU.hpp"
 
 
@@ -96,7 +97,7 @@ TMSU::removeTag(const QString& tag, const QString& filename)
     qDebug() << "TMSU::removeTag()" << tag << filename;
     QProcess p;
     QStringList args;
-    args << "untag" << filename << tag;
+    args << "untag" << "--tags" << tag << filename;
     QDir wdir(filename);
     wdir.cdUp();
     p.setWorkingDirectory(wdir.path());

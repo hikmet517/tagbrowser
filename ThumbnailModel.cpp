@@ -11,7 +11,6 @@
 #include <QSet>
 
 #include <KIO/PreviewJob>
-#include <qnamespace.h>
 
 
 ThumbnailModel::ThumbnailModel(const QString &dir, QObject *parent)
@@ -158,8 +157,8 @@ ThumbnailModel::handleThumbSuccess(const KFileItem& item, const QPixmap& preview
     for(int i=0; i<mData.size(); i++){
         if(mData[i].url == item.url()) {
             mData[i].pm = preview;
-            // QModelIndex topLeft = createIndex(i, 0);
-            // emit dataChanged(topLeft, topLeft, {Qt::DecorationRole});
+            QModelIndex topLeft = createIndex(i, 0);
+            emit dataChanged(topLeft, topLeft, {Qt::DecorationRole});
             break;
         }
     }
@@ -174,8 +173,8 @@ ThumbnailModel::handleThumbFail(const KFileItem& item)
         if(mData[i].url == item.url()) {
             QMimeType mt = mMimeDB.mimeTypeForFile(mData[i].url.path());
             mData[i].pm = QIcon::fromTheme(mt.name()).pixmap(256);
-            // QModelIndex topLeft = createIndex(i, 0);
-            // emit dataChanged(topLeft, topLeft, {Qt::DecorationRole});
+            QModelIndex topLeft = createIndex(i, 0);
+            emit dataChanged(topLeft, topLeft, {Qt::DecorationRole});
             break;
         }
     }

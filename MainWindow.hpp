@@ -36,7 +36,7 @@ private slots:
     void tagFilterChanged();
 
 private:
-    void createMenus();
+    void setupWidgets();
     void openDirectory();
     void startModelView(const QString& dir);
 
@@ -57,6 +57,4 @@ private:
     FilterWidget *mFilterTagWidget;
     QSortFilterProxyModel *mFilterPathProxyModel;
     FilterTagProxyModel *mFilterTagProxyModel;
-    QCompleter *mTagCompleter;
-    QCompleter *mPathCompleter;
 };
