@@ -50,6 +50,7 @@ TagWidget::setFocus()
     static_cast<TagEdit*>(mLayout->itemAt(mLayout->count()-1)->widget())->setFocus();
 }
 
+
 TagWidget::~TagWidget()
 {
     for(auto widget : mWidgets)

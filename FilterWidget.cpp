@@ -15,7 +15,8 @@ FilterWidget::FilterWidget(const QString& placeholder, const QStringList& comple
 }
 
 
-void FilterWidget::setCompletions(const QStringList& completions)
+void
+FilterWidget::setCompletions(const QStringList& completions)
 {
     if(mCompleter)
         delete mCompleter;
@@ -23,6 +24,15 @@ void FilterWidget::setCompletions(const QStringList& completions)
     mCompleter->setFilterMode(Qt::MatchContains);
     mCompleter->setCaseSensitivity(Qt::CaseInsensitive);
     setCompleter(mCompleter);
+}
+
+
+void
+FilterWidget::focusOutEvent(QFocusEvent* event)
+{
+    (void)event;
+    emit returnPressed();
+    QLineEdit::focusOutEvent(event);
 }
 
 

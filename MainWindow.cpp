@@ -44,7 +44,7 @@ MainWindow::MainWindow(const QString &dir)
 {
     qDebug() << "MainWindow::MainWindow(QString)";
     setupWidgets();
-    startModelView(dir);
+    startModelView(QDir(dir).canonicalPath());
 }
 
 
@@ -64,13 +64,15 @@ MainWindow::setupWidgets()
     mToolBar->addAction(mOpenAct);
 
     mSelectAct = new QAction(tr("Select &All"), this);
-    mSelectAct->setShortcuts({tr("Ctrl+A")});
+    mSelectAct->setShortcuts({tr("Alt+A")});
+    mSelectAct->setToolTip("Select All (Alt+A)");
     mSelectAct->setIcon(QIcon::fromTheme("edit-select-all"));
     mToolBar->addAction(mSelectAct);
     mSelectAct->setDisabled(true);
 
     mClearAct = new QAction(tr("&Clear Selection"), this);
-    mClearAct->setShortcuts({tr("Ctrl+Shift+A")});
+    mClearAct->setShortcuts({tr("Alt+Shift+A")});
+    mClearAct->setToolTip("Clear Selection (Alt+Shift+A)");
     mClearAct->setIcon(QIcon::fromTheme("edit-select-none"));
     mToolBar->addAction(mClearAct);
     mClearAct->setDisabled(true);
@@ -80,10 +82,12 @@ MainWindow::setupWidgets()
                                           ".*.(jpg|jpeg|png|bmp|gif|webp)"}, this);
     connect(mFilterPathWidget, &FilterWidget::returnPressed, this, &MainWindow::pathFilterChanged);
     mToolBar->addWidget(mFilterPathWidget);
+    mFilterPathWidget->setDisabled(true);
 
     mFilterTagWidget = new FilterWidget("Filter by tag using boolean", this);
     connect(mFilterTagWidget, &FilterWidget::returnPressed, this, &MainWindow::tagFilterChanged);
     mToolBar->addWidget(mFilterTagWidget);
+    mFilterTagWidget->setDisabled(true);
 
     mEmpty = new QWidget();
     mEmpty->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
@@ -119,6 +123,8 @@ MainWindow::openDirectory()
     QString dir = QFileDialog::getExistingDirectory(this, tr("Open Directory"),
                                                     defaultDir,
                                                     QFileDialog::ShowDirsOnly);
+    mFilterPathWidget->clear();
+    mFilterTagWidget->clear();
     startModelView(QDir(dir).canonicalPath());
 }
 
@@ -137,7 +143,10 @@ MainWindow::startModelView(const QString& dir)
         if(mModel) delete mModel;
         mModel = new ThumbnailModel(dir, this);
 
+        mFilterTagWidget->setEnabled(true);
         mFilterTagWidget->setCompletions(QStringList() << mModel->mAllTags << "%UNTAGGED%");
+
+        mFilterPathWidget->setEnabled(true);
 
         if(mFilterPathProxyModel) delete mFilterPathProxyModel;
         mFilterPathProxyModel = new QSortFilterProxyModel(this);
@@ -264,16 +273,16 @@ MainWindow::tagFilterChanged()
     qDebug() << "MainWindow::tagFilterChanged()";
     mModel->mSelected.clear();
     mView->clearSelection();
-    QString text = mFilterTagWidget->text();
+    QString query = mFilterTagWidget->text();
     mFilterTagProxyModel->mFilteredData.clear();
 
     QStringList args;
-    if(text.toLower() == "%untagged%")
+    if(query.toLower() == "%untagged%")
         args << "untagged";
     else
-        args << "files" << text;
+        args << "files" << query;
 
-    if(!text.isEmpty()) {
+    if(!query.isEmpty()) {
         QProcess p(this);
         p.setProgram("tmsu");
         p.setArguments(args);
@@ -300,7 +309,7 @@ MainWindow::tagFilterChanged()
             mFilterTagProxyModel->mFilteredData.insert(temp);
         }
     }
-    mFilterTagProxyModel->setFilterFixedString(text);
+    mFilterTagProxyModel->setFilterFixedString(query);
 }
 
 
@@ -339,7 +348,9 @@ MainWindow::dropEvent(QDropEvent* event)
             const QString& path = urlList.at(i).path();
             QFileInfo fi(path);
             if(fi.isDir() && fi.exists()) {
-                startModelView(path);
+                mFilterPathWidget->clear();
+                mFilterTagWidget->clear();
+                startModelView(QDir(path).canonicalPath());
                 break;
             }
         }
@@ -350,6 +361,7 @@ MainWindow::dropEvent(QDropEvent* event)
 
 MainWindow::~MainWindow()
 {
+    qDebug() << "MainWindow::~MainWindow()";
     if(mModel) delete mModel;
     if(mDock) delete mDock;
     if(mTagWidget) delete mTagWidget;

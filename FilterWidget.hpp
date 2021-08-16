@@ -11,6 +11,7 @@ public:
     FilterWidget(const QString& placeholder, const QStringList& completions, QWidget *parent = nullptr);
     ~FilterWidget();
     void setCompletions(const QStringList& completions);
+    void focusOutEvent(QFocusEvent* event);
 private:
     QCompleter *mCompleter;
 };
