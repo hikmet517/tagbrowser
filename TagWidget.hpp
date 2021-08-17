@@ -12,6 +12,7 @@ public:
     TagWidget(const QStringList& tags, const QStringList& allTags, QWidget *parent=nullptr);
     ~TagWidget();
     QSize sizeHint() const;
+    void lock();
     // void clearLayout();
     void setFocus();
 signals:

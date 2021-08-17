@@ -1,6 +1,5 @@
 #include <QDebug>
 #include <QVBoxLayout>
-#include <qsizepolicy.h>
 
 #include "TagWidget.hpp"
 #include "TagEdit.hpp"
@@ -25,8 +24,6 @@ TagWidget::TagWidget(const QStringList& tags, const QStringList& allTags, QWidge
     TagEdit *widget = new TagEdit(allTags, this);
     connect(widget, &TagEdit::addTagClicked, this, &TagWidget::addTagClicked);
     connect(widget, &TagEdit::removeTagClicked, this, &TagWidget::removeTagClicked);
-    if(tags.size() == 0)
-        widget->setDisabled(true);
     mWidgets.append(widget);
 
     mLayout->addWidget(widget);
@@ -40,6 +37,12 @@ QSize
 TagWidget::sizeHint() const
 {
     return size();
+}
+
+void
+TagWidget::lock()
+{
+    mWidgets[mWidgets.size()-1]->setDisabled(true);
 }
 
 // void

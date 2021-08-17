@@ -262,13 +262,14 @@ MainWindow::refreshTagWidget()
         mTagWidget = nullptr;
     }
 
-    // if(mModel->hasSelected()) {
-        mTagWidget = new TagWidget(mModel->getSelectedTags(), mModel->getAllTags());
-        connect(mTagWidget, &TagWidget::addTagClicked, this, &MainWindow::addTag);
-        connect(mTagWidget, &TagWidget::removeTagClicked, this, &MainWindow::removeTag);
-        mTagWidget->resize(mDockSize);
-        mDock->setWidget(mTagWidget); // parent of mTagWidget is mDock now
-    // }
+    mTagWidget = new TagWidget(mModel->getSelectedTags(), mModel->getAllTags());
+    connect(mTagWidget, &TagWidget::addTagClicked, this, &MainWindow::addTag);
+    connect(mTagWidget, &TagWidget::removeTagClicked, this, &MainWindow::removeTag);
+    if(!mModel->hasSelected()) {
+        mTagWidget->lock();
+    }
+    mTagWidget->resize(mDockSize);
+    mDock->setWidget(mTagWidget); // parent of mTagWidget is mDock now
 }
 
 
