@@ -1,5 +1,6 @@
 #include <QDebug>
 #include <QVBoxLayout>
+#include <qwidget.h>
 
 #include "TagWidget.hpp"
 #include "TagEdit.hpp"
@@ -47,7 +48,8 @@ void
 TagWidget::setFocus()
 {
     qDebug() << "TagWidget::setFocus()";
-    static_cast<TagEdit*>(mLayout->itemAt(mLayout->count()-1)->widget())->setFocus();
+    QWidget::setFocus();
+    mWidgets[mWidgets.size()-1]->setFocus();
 }
 
 

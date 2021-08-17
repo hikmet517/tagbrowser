@@ -1,6 +1,7 @@
 #include <QDir>
 #include <QDebug>
 #include <QProcess>
+#include <QFileInfo>
 
 #include <iostream>
 #include <sqlite3.h>
@@ -75,33 +76,80 @@ TMSU::getTags(const QString& dbPath)
 int
 TMSU::addTag(const QString& tag, const QStringList& files)
 {
-    qDebug() << "TMSU::addTag()" << tag << files;
+    qDebug() << "TMSU::addTag()";
     if(files.size() == 0)
         return 0;
     QProcess p;
-    QStringList args;
-    args << "tag" << "--tags" << tag << files;
-    QDir wdir(files[0]);
-    wdir.cdUp();
-    p.setWorkingDirectory(wdir.path());
-
-    p.start("tmsu", args);
+    p.setWorkingDirectory(QFileInfo(files[0]).dir().path());
+    p.start("tmsu", QStringList() << "tag" << "--tags" << tag << files);
     p.waitForFinished(-1);
     return p.exitCode();
 }
 
 
 int
-TMSU::removeTag(const QString& tag, const QString& filename)
+TMSU::removeTag(const QString& tag, const QStringList& files)
 {
-    qDebug() << "TMSU::removeTag()" << tag << filename;
+    qDebug() << "TMSU::removeTag()";
+    if(files.size() == 0)
+        return 0;
     QProcess p;
-    QStringList args;
-    args << "untag" << "--tags" << tag << filename;
-    QDir wdir(filename);
-    wdir.cdUp();
-    p.setWorkingDirectory(wdir.path());
-    p.start("tmsu", args);
+    p.setWorkingDirectory(QFileInfo(files[0]).dir().path());
+    p.start("tmsu", QStringList() << "untag" << "--tags" << tag << files);
     p.waitForFinished(-1);
     return p.exitCode();
+}
+
+
+int
+TMSU::query(const QStringList &args, const QString &wdir, QStringList &output)
+{
+    QProcess p;
+    p.setProgram("tmsu");
+    p.setArguments(args);
+    p.setWorkingDirectory(wdir);
+    p.setReadChannel(QProcess::StandardOutput);
+    p.start();
+    p.waitForFinished(-1);
+
+    int res = p.exitCode();
+    if(res != 0) {
+        output = QStringList();
+        return res;
+    }
+
+    QString out = QString(p.readAllStandardOutput()).trimmed();
+    QStringList lines = out.split('\n');
+    for(const auto& line : lines) {
+        if(line.isEmpty())
+            continue;
+        output.append(QDir(wdir + "/" + line).canonicalPath());
+    }
+    return res;
+}
+
+
+int
+TMSU::untagged(QString &wdir, QStringList &output)
+{
+    QProcess p;
+    p.setProgram("tmsu");
+    p.setArguments(QStringList() << "untagged");
+    p.start();
+    p.waitForFinished(-1);
+
+    int res = p.exitCode();
+    if(res != 0) {
+        output = QStringList();
+        return res;
+    }
+
+    QString out = QString(p.readAllStandardOutput()).trimmed();
+    QStringList lines = out.split('\n');
+    for(const auto& line : lines) {
+        if(line.isEmpty())
+            continue;
+        output.append(QDir(wdir + "/" + line).canonicalPath());
+    }
+    return res;
 }

@@ -9,6 +9,7 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QCompleter>
+#include <qwidget.h>
 
 
 // editable
@@ -49,6 +50,7 @@ void
 TagEdit::setFocus()
 {
     qDebug() << "TagEdit::setFocus()";
+    QWidget::setFocus();
     mLineEdit->setFocus();
 }
 

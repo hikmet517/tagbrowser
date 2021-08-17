@@ -27,13 +27,13 @@ FilterWidget::setCompletions(const QStringList& completions)
 }
 
 
-void
-FilterWidget::focusOutEvent(QFocusEvent* event)
-{
-    (void)event;
-    emit returnPressed();
-    QLineEdit::focusOutEvent(event);
-}
+// void
+// FilterWidget::focusOutEvent(QFocusEvent* event)
+// {
+//     (void)event;
+//     emit returnPressed();
+//     QLineEdit::focusOutEvent(event);
+// }
 
 
 FilterWidget::~FilterWidget()
