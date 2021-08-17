@@ -3,7 +3,6 @@
 #include <QCommandLineParser>
 #include <QDebug>
 #include <QLoggingCategory>
-#include <QScreen>
 
 #include <iostream>
 
@@ -13,12 +12,14 @@
 
 int main(int argc, char *argv[])
 {
-#ifndef NDEBUG
     // to enable qDebug()
+#ifndef NDEBUG
     QLoggingCategory::defaultCategory()->setEnabled(QtDebugMsg, true);
 #endif
 
     QApplication app(argc, argv);
+    QCoreApplication::setApplicationName("tagbrowser");
+    QCoreApplication::setOrganizationName("TagBrowser");
 
     QCommandLineParser parser;
     parser.addPositionalArgument("folder", "Folder to generate thumbnails for.");
@@ -30,13 +31,11 @@ int main(int argc, char *argv[])
     }
     else {
         QString dir = parser.positionalArguments().at(0);
-        mw = new MainWindow(QDir(dir).absolutePath());
+        mw = new MainWindow(QDir(dir).canonicalPath());
     }
 
-    QScreen *screen = QGuiApplication::primaryScreen();
-    QRect rect = screen->availableGeometry();
-    mw->resize(rect.width()*3/4, rect.height()*3/4);
-    mw->setWindowTitle("Tag Browser");
     mw->show();
-    return app.exec();
+    int ret = app.exec();
+    delete mw;
+    return ret;
 }

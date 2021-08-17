@@ -1,4 +1,5 @@
 #include <QWidget>
+#include <QApplication>
 #include <QMainWindow>
 #include <QAction>
 #include <QMenuBar>
@@ -18,6 +19,8 @@
 #include <QSortFilterProxyModel>
 #include <QProcess>
 #include <QCompleter>
+#include <QScreen>
+#include <QSettings>
 
 #include <iostream>
 
@@ -38,6 +41,7 @@ MainWindow::MainWindow()
 }
 
 
+// entry point
 MainWindow::MainWindow(const QString &dir)
     : QMainWindow(), mModel(nullptr), mView(nullptr), mDock(nullptr),
       mTagWidget(nullptr), mFilterPathProxyModel(nullptr), mFilterTagProxyModel(nullptr)
@@ -51,6 +55,9 @@ MainWindow::MainWindow(const QString &dir)
 void
 MainWindow::setupWidgets()
 {
+    mSettings = new QSettings(this);
+    setWindowTitle(QCoreApplication::applicationName());
+
     // setup toolbar
     mToolBar = new QToolBar(this);
     mToolBar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
@@ -90,7 +97,7 @@ MainWindow::setupWidgets()
     mToolBar->addWidget(mFilterTagWidget);
     mFilterTagWidget->setDisabled(true);
 
-    mEmpty = new QWidget();
+    mEmpty = new QWidget(this);
     mEmpty->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
     mToolBar->addWidget(mEmpty);
 
@@ -110,23 +117,22 @@ MainWindow::setupWidgets()
     // setup dock
     mDock = new QDockWidget("Tags", this);
     mDock->setFeatures(QDockWidget::DockWidgetMovable);
-    resizeDocks({mDock}, {200}, Qt::Horizontal);
     addDockWidget(Qt::RightDockWidgetArea, mDock);
 
     setAcceptDrops(true);
+    readSettings();
 }
 
 
+// entry point
 void
 MainWindow::openDirectory()
 {
     qDebug() << "MainWindow::openDirectory()";
-    QString defaultDir = mLastDir.isEmpty() ? "" : mLastDir;
+    QString defaultDir = mLastPath.isEmpty() ? "" : mLastPath;
     QString dir = QFileDialog::getExistingDirectory(this, tr("Open Directory"),
                                                     defaultDir,
                                                     QFileDialog::ShowDirsOnly);
-    mFilterPathWidget->clear();
-    mFilterTagWidget->clear();
     startModelView(dir);
 }
 
@@ -143,7 +149,7 @@ MainWindow::startModelView(const QString& dir)
 
     QString path = QDir(dir).canonicalPath();
     if(!path.isEmpty() && QDir(path).exists()) {
-        mLastDir = path;
+        mLastPath = path;
 
         mSelectAct->setEnabled(true);
         connect(mSelectAct, &QAction::triggered, mView, &QAbstractItemView::selectAll, Qt::UniqueConnection);
@@ -256,12 +262,13 @@ MainWindow::refreshTagWidget()
         mTagWidget = nullptr;
     }
 
-    if(mModel->hasSelected()) {
-        mTagWidget = new TagWidget(mModel->getSelectedTags(), mModel->getAllTags(), mDock);
+    // if(mModel->hasSelected()) {
+        mTagWidget = new TagWidget(mModel->getSelectedTags(), mModel->getAllTags());
         connect(mTagWidget, &TagWidget::addTagClicked, this, &MainWindow::addTag);
         connect(mTagWidget, &TagWidget::removeTagClicked, this, &MainWindow::removeTag);
-        mDock->setWidget(mTagWidget);
-    }
+        mTagWidget->resize(mDockSize);
+        mDock->setWidget(mTagWidget); // parent of mTagWidget is mDock now
+    // }
 }
 
 
@@ -287,11 +294,11 @@ MainWindow::tagFilterChanged()
 
     QStringList output;
     int res = 0;
-    if(query.toLower() == "%untagged%") {
-        res = TMSU::untagged(mModel->mRootDir, output);
+    if(query.toUpper() == "%UNTAGGED%") {
+        res = TMSU::untagged(mModel->mRootPath, output);
     }
     else if(!query.isEmpty()) {
-        res = TMSU::query(QStringList() << "files" << query, mModel->mRootDir, output);
+        res = TMSU::query(QStringList() << "files" << query, mModel->mRootPath, output);
     }
     mFilterTagProxyModel->mFilteredData = QSet<QString>(output.begin(), output.end());
 
@@ -327,6 +334,7 @@ MainWindow::dragEnterEvent(QDragEnterEvent *event)
 }
 
 
+// entry point
 void
 MainWindow::dropEvent(QDropEvent* event)
 {
@@ -353,23 +361,64 @@ MainWindow::dropEvent(QDropEvent* event)
 }
 
 
+void MainWindow::readSettings()
+{
+    qDebug() << "MainWindow::readSettings()";
+
+    mSettings->beginGroup("General");
+    mLastPath = mSettings->value("lastPath", "").toString();
+    mSettings->endGroup();
+
+    mSettings->beginGroup("MainWindow");
+    QRect rect = QGuiApplication::primaryScreen()->availableGeometry();
+    resize(mSettings->value("size", QSize(rect.width()*3/4, rect.height()*3/4)).toSize());
+    move(mSettings->value("pos", QPoint(200, 200)).toPoint());
+    mSettings->endGroup();
+
+    mSettings->beginGroup("Dock");
+    mDockSize = mSettings->value("size").toSize();
+    mSettings->endGroup();
+}
+
+
+void MainWindow::writeSettings()
+{
+    qDebug() << "MainWindow::writeSettings()";
+    if(!mLastPath.isEmpty()) {
+        mSettings->beginGroup("General");
+        mSettings->setValue("lastPath", mLastPath);
+        mSettings->endGroup();
+    }
+
+    mSettings->beginGroup("MainWindow");
+    mSettings->setValue("size", size());
+    mSettings->setValue("pos", pos());
+    mSettings->endGroup();
+
+    mSettings->beginGroup("Dock");
+    mSettings->setValue("size", mDock->size());
+    mSettings->endGroup();
+}
+
+
 MainWindow::~MainWindow()
 {
     qDebug() << "MainWindow::~MainWindow()";
+    writeSettings();
+    delete mSettings;
+
     if(mModel) delete mModel;
-    if(mDock) delete mDock;
-    if(mTagWidget) delete mTagWidget;
+    delete mView;
+    delete mDock;               // also clears mTagWidget
     if(mFilterPathProxyModel) delete mFilterPathProxyModel;
+    if(mFilterTagProxyModel) delete mFilterTagProxyModel;
 
-    menuBar()->clear();
-
-    delete mToolBar;
     delete mOpenAct;
     delete mSelectAct;
     delete mClearAct;
-    delete mFilterPathWidget;
-    delete mFilterTagWidget;
     delete mEmpty;
     delete mExitAct;
-    delete mView;
+    delete mFilterPathWidget;
+    delete mFilterTagWidget;
+    delete mToolBar;
 }

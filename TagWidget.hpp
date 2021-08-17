@@ -11,6 +11,7 @@ Q_OBJECT
 public:
     TagWidget(const QStringList& tags, const QStringList& allTags, QWidget *parent=nullptr);
     ~TagWidget();
+    QSize sizeHint() const;
     // void clearLayout();
     void setFocus();
 signals:

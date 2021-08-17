@@ -11,6 +11,7 @@ class TagWidget;
 class FilterWidget;
 class FilterTagProxyModel;
 class QCompleter;
+class QSettings;
 
 class MainWindow : public QMainWindow
 {
@@ -20,6 +21,8 @@ public:
     ~MainWindow();
 
     void refreshTagWidget();
+    void readSettings();
+    void writeSettings();
 
     // dnd (https://doc.qt.io/qt-5/dnd.html)
     void dragMoveEvent(QDragMoveEvent *event) override;
@@ -40,7 +43,10 @@ private:
     void openDirectory();
     void startModelView(const QString& dir);
 
-    QString mLastDir;
+    QString mLastPath;
+    QSize mDockSize;
+
+    QSettings *mSettings;
 
     ThumbnailModel *mModel;
     ThumbnailView *mView;
@@ -48,10 +54,10 @@ private:
     TagWidget *mTagWidget;
 
     QAction *mOpenAct;
-    QAction *mExitAct;
-    QAction *mClearAct;
     QAction *mSelectAct;
+    QAction *mClearAct;
     QWidget *mEmpty;
+    QAction *mExitAct;
     QToolBar *mToolBar;
     FilterWidget *mFilterPathWidget;
     FilterWidget *mFilterTagWidget;

@@ -54,7 +54,7 @@ TMSU::getTags(const QString& dbPath)
         return {};
     }
 
-    char sql[] = "SELECT file.directory, file.name as filename, tag.name AS tag, value.name value FROM \
+    char sql[] = "SELECT file.directory, file.name AS filename, tag.name AS tag, value.name AS value FROM \
                   file \
                   INNER JOIN file_tag ON file.id = file_tag.file_id \
                   INNER JOIN tag ON file_tag.tag_id = tag.id \
@@ -104,6 +104,7 @@ TMSU::removeTag(const QString& tag, const QStringList& files)
 int
 TMSU::query(const QStringList &args, const QString &wdir, QStringList &output)
 {
+    qDebug() << "TMSU::query()";
     QProcess p;
     p.setProgram("tmsu");
     p.setArguments(args);
@@ -132,9 +133,12 @@ TMSU::query(const QStringList &args, const QString &wdir, QStringList &output)
 int
 TMSU::untagged(QString &wdir, QStringList &output)
 {
+    qDebug() << "TMSU::untagged()";
     QProcess p;
     p.setProgram("tmsu");
     p.setArguments(QStringList() << "untagged");
+    p.setWorkingDirectory(wdir);
+    p.setReadChannel(QProcess::StandardOutput);
     p.start();
     p.waitForFinished(-1);
 

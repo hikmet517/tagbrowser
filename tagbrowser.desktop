@@ -5,6 +5,5 @@ Exec=tagbrowser %U
 Terminal=false
 Icon=tagbrowser
 Type=Application
-Categories=Qt;Viewer;
+Categories=Qt;Viewer;Utility
 MimeType=inode/directory;
-X-DocPath=gwenview/index.html

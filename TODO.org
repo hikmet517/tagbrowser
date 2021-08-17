@@ -1,6 +1,5 @@
 * better completer (complete tags by splitting from spaces), subclass QCompleter
 * status bar: show file count, process return codes
-* refactoring, collect process relating things under TMSU namespace
 * regex filtering is too slow and freezing the system for a while
 * .nomedia-like feature
 * scripting support
@@ -14,5 +13,4 @@
 * cross-platform:
 ** write a thumbnailer
 ** handle double-click open
-* remember last settings (panel, window sizes etc)
 * refresh button to catch file changes

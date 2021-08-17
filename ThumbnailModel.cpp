@@ -5,6 +5,7 @@
 #include <QAbstractItemModel>
 #include <QDirIterator>
 #include <QListView>
+#include <QFileInfo>
 #include <QVariant>
 #include <QDebug>
 #include <QIcon>
@@ -26,6 +27,7 @@ ThumbnailModel::ThumbnailModel(const QString &dir, QObject *parent)
 
     // get Tags
     mDBPath = TMSU::getDatabasePath(mDir);
+    mRootPath = QFileInfo(QFileInfo(mDBPath).dir().path()).dir().path();
     getTagsFromDB();
 }
 
@@ -43,6 +45,7 @@ ThumbnailModel::ThumbnailModel(const QStringList &dirs, QObject *parent)
 
     // get Tags
     mDBPath = TMSU::getDatabasePath(mDir);
+    mRootPath = QFileInfo(QFileInfo(mDBPath).dir().canonicalPath()).dir().canonicalPath();
     getTagsFromDB();
 }
 
@@ -70,12 +73,8 @@ ThumbnailModel::getTagsFromDB()
     // create a hash set and a list of all tags
     QSet<QString> allTags;
     QHash<QString, QSet<QString>> tagHashSet;
-    QDir root = QDir(mDBPath).canonicalPath();
-    root.cdUp();
-    root.cdUp();
-    mRootDir = root.absolutePath();
     for(int i=0; i<tags.size(); i++){
-        QString path = QDir(mRootDir + QDir::separator() + tags[i][0]
+        QString path = QDir(mRootPath + QDir::separator() + tags[i][0]
                             + QDir::separator() + tags[i][1]).canonicalPath();
 
         QString tag = tags[i][2];

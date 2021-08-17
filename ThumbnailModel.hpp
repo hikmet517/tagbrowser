@@ -36,7 +36,7 @@ public:
     QList<FileData> mData;
     QSet<int> mSelected;
     QString mDir;
-    QString mRootDir;
+    QString mRootPath;
     QMimeDatabase mMimeDB;
     QString mDBPath;
     QStringList mAllTags;
