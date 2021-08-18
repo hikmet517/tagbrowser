@@ -2,7 +2,6 @@
 #include <QWidget>
 #include <QAbstractListModel>
 #include <QMimeDatabase>
-#include <QItemSelection>
 
 #include <KFileItem>
 

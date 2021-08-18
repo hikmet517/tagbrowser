@@ -1,7 +1,7 @@
 #include <QApplication>
-#include <QDir>
 #include <QCommandLineParser>
 #include <QDebug>
+#include <QDir>
 #include <QLoggingCategory>
 
 #include <iostream>

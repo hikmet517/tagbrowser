@@ -1,8 +1,9 @@
 #pragma once
+#include <QDebug>
 #include <QWidget>
 #include <QMainWindow>
-#include <QDebug>
 #include <QItemSelection>
+
 
 class QSortFilterProxyModel;
 class ThumbnailModel;
@@ -29,14 +30,21 @@ public:
     void dragEnterEvent(QDragEnterEvent *event) override;
     void dropEvent(QDropEvent* event) override;
 
-    void handleSelection(const QItemSelection &selected, const QItemSelection &deselected);
-    void handleDoubleClick(const QModelIndex &index);
 
 private slots:
     void addTag(const QString& tag);
     void removeTag(const QString& tag);
+
     void pathFilterChanged();
     void tagFilterChanged();
+
+    void handleSelection(const QItemSelection &selected, const QItemSelection &deselected);
+    void openFile(const QModelIndex &index);
+
+    void about();
+    void aboutQt();
+
+    void toggleMenuHide();
 
 private:
     void setupWidgets();
@@ -58,6 +66,9 @@ private:
     QAction *mClearAct;
     QWidget *mEmpty;
     QAction *mExitAct;
+    QAction *mAboutAct;
+    QAction *mAboutQtAct;
+    QAction *mHideMenuAct;
     QToolBar *mToolBar;
     FilterWidget *mFilterPathWidget;
     FilterWidget *mFilterTagWidget;

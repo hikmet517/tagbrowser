@@ -1,5 +1,6 @@
 #include <QCompleter>
 #include <QDebug>
+
 #include "FilterWidget.hpp"
 
 

@@ -1,17 +1,13 @@
-#include "ThumbnailModel.hpp"
-#include "TMSU.hpp"
-#include "MainWindow.hpp"
-
-#include <QAbstractItemModel>
-#include <QDirIterator>
-#include <QListView>
-#include <QFileInfo>
-#include <QVariant>
 #include <QDebug>
-#include <QIcon>
+#include <QDirIterator>
+#include <QFileInfo>
 #include <QSet>
 
 #include <KIO/PreviewJob>
+
+#include "MainWindow.hpp"
+#include "TMSU.hpp"
+#include "ThumbnailModel.hpp"
 
 
 ThumbnailModel::ThumbnailModel(const QString &dir, QObject *parent)

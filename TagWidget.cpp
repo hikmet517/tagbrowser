@@ -1,10 +1,10 @@
 #include <QDebug>
 #include <QVBoxLayout>
 
-#include "TagWidget.hpp"
-#include "TagEdit.hpp"
 #include "MainWindow.hpp"
 #include "TMSU.hpp"
+#include "TagEdit.hpp"
+#include "TagWidget.hpp"
 
 
 TagWidget::TagWidget(const QStringList& tags, const QStringList& allTags, QWidget *parent)

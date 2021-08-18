@@ -1,5 +1,6 @@
-#include "FilterTagProxyModel.hpp"
 #include <QDebug>
+
+#include "FilterTagProxyModel.hpp"
 
 
 FilterTagProxyModel::FilterTagProxyModel(QObject *parent)

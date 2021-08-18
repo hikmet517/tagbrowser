@@ -1,7 +1,4 @@
 #pragma once
-
-#include <QWidget>
-#include <QSet>
 #include <QSortFilterProxyModel>
 
 

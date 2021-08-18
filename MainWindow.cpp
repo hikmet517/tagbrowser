@@ -1,35 +1,32 @@
-#include <QWidget>
+#include <QAction>
 #include <QApplication>
-#include <QMainWindow>
-#include <QAction>
-#include <QMenuBar>
-#include <QFileDialog>
 #include <QDebug>
-#include <QListView>
-#include <QMessageBox>
-#include <QAction>
-#include <QIcon>
-#include <QDrag>
-#include <QMimeData>
-#include <QDropEvent>
-#include <QListView>
 #include <QDockWidget>
-#include <QToolBar>
+#include <QDrag>
+#include <QDropEvent>
+#include <QFileDialog>
 #include <QFileInfo>
-#include <QSortFilterProxyModel>
+#include <QIcon>
+#include <QMainWindow>
+#include <QMenuBar>
+#include <QMessageBox>
+#include <QMimeData>
 #include <QProcess>
-#include <QCompleter>
 #include <QScreen>
 #include <QSettings>
+#include <QSortFilterProxyModel>
+#include <QStatusBar>
+#include <QToolBar>
+#include <QWidget>
 
 #include <iostream>
 
+#include "FilterTagProxyModel.hpp"
+#include "FilterWidget.hpp"
 #include "MainWindow.hpp"
+#include "TMSU.hpp"
 #include "ThumbnailModel.hpp"
 #include "ThumbnailView.hpp"
-#include "FilterWidget.hpp"
-#include "FilterTagProxyModel.hpp"
-#include "TMSU.hpp"
 
 
 MainWindow::MainWindow()
@@ -55,59 +52,88 @@ MainWindow::MainWindow(const QString &dir)
 void
 MainWindow::setupWidgets()
 {
+    qDebug() << "MainWindow::setupWidgets()";
     mSettings = new QSettings(this);
     setWindowTitle(QCoreApplication::applicationName());
-
-    // setup toolbar
-    mToolBar = new QToolBar(this);
-    mToolBar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-    mToolBar->setFloatable(false);
-    mToolBar->setWindowTitle("Main Toolbar");
 
     mOpenAct = new QAction(tr("&Open..."), this);
     mOpenAct->setShortcuts(QKeySequence::Open);
     mOpenAct->setToolTip(QString("Open Directory (%1)").arg(QKeySequence(QKeySequence::Open).toString()));
     mOpenAct->setIcon(QIcon::fromTheme("document-open"));
     connect(mOpenAct, &QAction::triggered, this, &MainWindow::openDirectory);
-    mToolBar->addAction(mOpenAct);
 
     mSelectAct = new QAction(tr("Select &All"), this);
-    mSelectAct->setShortcuts({tr("Alt+A")});
+    mSelectAct->setShortcut(tr("Alt+A"));
     mSelectAct->setToolTip("Select All (Alt+A)");
     mSelectAct->setIcon(QIcon::fromTheme("edit-select-all"));
-    mToolBar->addAction(mSelectAct);
-    mSelectAct->setDisabled(true);
+    // mSelectAct->setDisabled(true);
 
     mClearAct = new QAction(tr("&Clear Selection"), this);
-    mClearAct->setShortcuts({tr("Alt+Shift+A")});
+    mClearAct->setShortcut(tr("Alt+Shift+A"));
     mClearAct->setToolTip("Clear Selection (Alt+Shift+A)");
     mClearAct->setIcon(QIcon::fromTheme("edit-select-none"));
-    mToolBar->addAction(mClearAct);
-    mClearAct->setDisabled(true);
+    // mClearAct->setDisabled(true);
 
     mFilterPathWidget = new FilterWidget("Filter by path using regex",
                                          {".*.(mp4|avi|mkv|mov|wmv|webm)$",
                                           ".*.(jpg|jpeg|png|bmp|gif|webp)"}, this);
     connect(mFilterPathWidget, &FilterWidget::returnPressed, this, &MainWindow::pathFilterChanged);
-    mToolBar->addWidget(mFilterPathWidget);
-    mFilterPathWidget->setDisabled(true);
+    // mFilterPathWidget->setDisabled(true);
 
     mFilterTagWidget = new FilterWidget("Filter by tag using boolean logic", this);
     connect(mFilterTagWidget, &FilterWidget::returnPressed, this, &MainWindow::tagFilterChanged);
-    mToolBar->addWidget(mFilterTagWidget);
-    mFilterTagWidget->setDisabled(true);
+    // mFilterTagWidget->setDisabled(true);
 
     mEmpty = new QWidget(this);
     mEmpty->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
-    mToolBar->addWidget(mEmpty);
 
     mExitAct = new QAction(tr("&Quit"), this);
     mExitAct->setShortcuts(QKeySequence::Quit);
     mExitAct->setIcon(QIcon::fromTheme("application-exit"));
     connect(mExitAct, &QAction::triggered, this, &QWidget::close);
-    mToolBar->addAction(mExitAct);
 
+    mAboutAct = new QAction(tr("&About"), this);
+    mAboutAct->setStatusTip(tr("Show the application's About box"));
+    connect(mAboutAct, &QAction::triggered, this, &MainWindow::about);
+
+    mAboutQtAct = new QAction(tr("About &Qt"), this);
+    mAboutQtAct->setStatusTip(tr("Show the Qt library's About box"));
+    connect(mAboutQtAct, &QAction::triggered, qApp, &QApplication::aboutQt);
+    connect(mAboutQtAct, &QAction::triggered, this, &MainWindow::aboutQt);
+
+    mHideMenuAct = new QAction("Toggle Menu Bar", this);
+    mHideMenuAct->setShortcut(tr("Ctrl+M"));
+    mHideMenuAct->setIcon(QIcon::fromTheme("show-menu"));
+    connect(mHideMenuAct, &QAction::triggered, this, &MainWindow::toggleMenuHide);
+
+
+    // setup toolbar
+    mToolBar = new QToolBar(this);
+    mToolBar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    mToolBar->setFloatable(false);
+    mToolBar->setWindowTitle("Main Toolbar");
+    mToolBar->addAction(mOpenAct);
+    mToolBar->addAction(mSelectAct);
+    mToolBar->addAction(mClearAct);
+    mToolBar->addAction(mHideMenuAct);
+    mToolBar->addWidget(mFilterPathWidget);
+    mToolBar->addWidget(mFilterTagWidget);
+    mToolBar->addWidget(mEmpty);
+    mToolBar->addAction(mExitAct);
     addToolBar(mToolBar);
+
+    // setup menubar
+    QMenu * fileMenu = menuBar()->addMenu(tr("&File"));
+    fileMenu->addAction(mOpenAct);
+    fileMenu->addSeparator();
+    fileMenu->addAction(mExitAct);
+    QMenu * editMenu = menuBar()->addMenu(tr("&Edit"));
+    editMenu->addAction(mSelectAct);
+    editMenu->addAction(mClearAct);
+    QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
+    helpMenu->addAction(mAboutAct);
+    helpMenu->addAction(mAboutQtAct);
+
 
     // setup view
     mView = new ThumbnailView(this);
@@ -179,8 +205,11 @@ MainWindow::startModelView(const QString& dir)
         connect(mView->selectionModel(), &QItemSelectionModel::selectionChanged,
                 this, &MainWindow::handleSelection, Qt::UniqueConnection);
         connect(mView, &ThumbnailView::doubleClicked,
-                this, &MainWindow::handleDoubleClick, Qt::UniqueConnection);
+                this, &MainWindow::openFile);
+        connect(mView, &ThumbnailView::returnPressed,
+                this, &MainWindow::openFile, Qt::UniqueConnection);
 
+        statusBar()->showMessage(QString::number(mModel->mData.size()) + " files");
         refreshTagWidget();
     }
 }
@@ -196,14 +225,19 @@ MainWindow::handleSelection(const QItemSelection &selected, const QItemSelection
     for(const auto& index : deselected.indexes()) {
         mModel->mSelected.remove(mFilterPathProxyModel->mapToSource(mFilterTagProxyModel->mapToSource(index)).row());
     }
+    int selectedSize = mModel->mSelected.size();
+    if(selectedSize != 0)
+        statusBar()->showMessage(QString::number(selectedSize) + " files selected");
+    else
+        statusBar()->showMessage(QString::number(mModel->mData.size()) + " files");
     refreshTagWidget();
 }
 
 
 void
-MainWindow::handleDoubleClick(const QModelIndex &index)
+MainWindow::openFile(const QModelIndex &index)
 {
-    qDebug() << "MainWindow::handleDoubleClick()";
+    qDebug() << "MainWindow::openFile()";
     // for windows start (cmd) or Invoke-Item (powershell)
     QProcess p(this);
     int i = mFilterPathProxyModel->mapToSource(mFilterTagProxyModel->mapToSource(index)).row();
@@ -226,10 +260,11 @@ MainWindow::addTag(const QString& tag)
         mFilterTagWidget->setCompletions(QStringList() << mModel->mAllTags << "%UNTAGGED%");
     }
     else {
-        QMessageBox msg = QMessageBox(QMessageBox::Information,
-                                      "Tag cannot be added",
-                                      "Process returned " + QString::number(res));
-        msg.exec();
+        statusBar()->showMessage("Tag cannot be added, Process returned " + QString::number(res));
+        // QMessageBox msg = QMessageBox(QMessageBox::Information,
+        //                               "Tag cannot be added",
+        //                               "Process returned " + QString::number(res));
+        // msg.exec();
     }
 }
 
@@ -245,10 +280,11 @@ MainWindow::removeTag(const QString& tag)
         mFilterTagWidget->setCompletions(QStringList() << mModel->mAllTags << "%UNTAGGED%");
     }
     else {
-        QMessageBox msg = QMessageBox(QMessageBox::Information,
-                                      "Tag cannot be removed",
-                                      "Process returned " + QString::number(res));
-        msg.exec();
+        statusBar()->showMessage("Tag cannot be removed, Process returned " + QString::number(res));
+        // QMessageBox msg = QMessageBox(QMessageBox::Information,
+        //                               "Tag cannot be removed",
+        //                               "Process returned " + QString::number(res));
+        // msg.exec();
     }
 }
 
@@ -304,11 +340,12 @@ MainWindow::tagFilterChanged()
     mFilterTagProxyModel->mFilteredData = QSet<QString>(output.begin(), output.end());
 
     if(res != 0) {
-        QMessageBox msg = QMessageBox(QMessageBox::Information,
-                                      "Query error",
-                                      "Process returned " + QString::number(res));
-        msg.exec();
-        return;
+        statusBar()->showMessage("Query Failed, Process returned " + QString::number(res));
+        // QMessageBox msg = QMessageBox(QMessageBox::Information,
+        //                               "Query error",
+        //                               "Process returned " + QString::number(res));
+        // msg.exec();
+        // return;
     }
     else
         mFilterTagProxyModel->setFilterFixedString(query);
@@ -368,6 +405,7 @@ void MainWindow::readSettings()
 
     mSettings->beginGroup("General");
     mLastPath = mSettings->value("lastPath", "").toString();
+    menuBar()->setHidden(mSettings->value("menuHidden", false).toBool());
     mSettings->endGroup();
 
     mSettings->beginGroup("MainWindow");
@@ -385,11 +423,10 @@ void MainWindow::readSettings()
 void MainWindow::writeSettings()
 {
     qDebug() << "MainWindow::writeSettings()";
-    if(!mLastPath.isEmpty()) {
-        mSettings->beginGroup("General");
-        mSettings->setValue("lastPath", mLastPath);
-        mSettings->endGroup();
-    }
+    mSettings->beginGroup("General");
+    mSettings->setValue("lastPath", mLastPath);
+    mSettings->setValue("menuHidden", menuBar()->isHidden());
+    mSettings->endGroup();
 
     mSettings->beginGroup("MainWindow");
     mSettings->setValue("size", size());
@@ -401,6 +438,33 @@ void MainWindow::writeSettings()
     mSettings->endGroup();
 }
 
+
+void
+MainWindow::about()
+{
+    // infoLabel->setText(tr("Invoked <b>Help|About</b>"));
+    QMessageBox::about(this, tr("About Menu"),
+            tr("The <b>Menu</b> example shows how to create "
+               "menu-bar menus and context menus."));
+}
+
+
+void
+MainWindow::aboutQt()
+{
+    // infoLabel->setText(tr("Invoked <b>Help|About Qt</b>"));
+}
+
+
+void
+MainWindow::toggleMenuHide()
+{
+    QMenuBar *mbar = menuBar();
+    if(mbar->isHidden())
+        mbar->setHidden(false);
+    else
+        mbar->hide();
+}
 
 MainWindow::~MainWindow()
 {

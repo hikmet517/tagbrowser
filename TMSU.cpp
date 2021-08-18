@@ -1,7 +1,7 @@
-#include <QDir>
 #include <QDebug>
-#include <QProcess>
+#include <QDir>
 #include <QFileInfo>
+#include <QProcess>
 
 #include <iostream>
 #include <sqlite3.h>

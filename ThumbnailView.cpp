@@ -22,6 +22,6 @@ ThumbnailView::keyPressEvent(QKeyEvent *event)
 {
     int key = event->key();
     if(key == Qt::Key_Return || key == Qt::Key_Enter)
-        emit doubleClicked(selectionModel()->currentIndex());
+        emit returnPressed(selectionModel()->currentIndex());
     QAbstractItemView::keyPressEvent(event);
 }
