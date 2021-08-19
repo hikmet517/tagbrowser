@@ -3,6 +3,7 @@
 #include <QWidget>
 #include <QMainWindow>
 #include <QItemSelection>
+#include <qlineedit.h>
 
 
 class QSortFilterProxyModel;
@@ -40,11 +41,13 @@ private slots:
 
     void handleSelection(const QItemSelection &selected, const QItemSelection &deselected);
     void openFile(const QModelIndex &index);
+    void openContainingFolder(const QModelIndex &index);
 
     void about();
-    void aboutQt();
-
     void toggleMenuHide();
+
+protected:
+    void contextMenuEvent(QContextMenuEvent *event) override;
 
 private:
     void setupWidgets();
@@ -64,12 +67,13 @@ private:
     QAction *mOpenAct;
     QAction *mSelectAct;
     QAction *mClearAct;
-    QWidget *mEmpty;
+    QWidget *mFiller;
     QAction *mExitAct;
     QAction *mAboutAct;
     QAction *mAboutQtAct;
     QAction *mHideMenuAct;
     QToolBar *mToolBar;
+
     FilterWidget *mFilterPathWidget;
     FilterWidget *mFilterTagWidget;
     QSortFilterProxyModel *mFilterPathProxyModel;

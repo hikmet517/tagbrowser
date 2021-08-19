@@ -1,5 +1,4 @@
 * better completer (complete tags by splitting from spaces), subclass QCompleter
-* status bar: show file count, process return codes
 * regex filtering is too slow and freezing the system for a while
 * .nomedia-like feature
 * scripting support

@@ -7,6 +7,7 @@
 FilterWidget::FilterWidget(const QString& placeholder, QWidget *parent) : QLineEdit(parent), mCompleter(nullptr)
 {
     setPlaceholderText(placeholder);
+    // connect(this, &QLineEdit::textChanged, this, &FilterWidget::handleTextChange, Qt::QueuedConnection);
 }
 
 
@@ -14,6 +15,7 @@ FilterWidget::FilterWidget(const QString& placeholder, const QStringList& comple
 {
     setPlaceholderText(placeholder);
     setCompletions(completions);
+    // connect(this, &QLineEdit::textChanged, this, &FilterWidget::handleTextChange, Qt::QueuedConnection);
 }
 
 
@@ -38,8 +40,23 @@ FilterWidget::setCompletions(const QStringList& completions)
 // }
 
 
+// void
+// FilterWidget::handleTextChange(const QString &text)
+// {
+//     int len = text.size();
+//     if(len > 0 && text.at(len-1) == " ") {
+//         emit QLineEdit::textChanged("");
+//     }
+//     else {
+//         int i = text.lastIndexOf(" ");
+//         if(i != -1)
+//             emit QLineEdit::textChanged(text.mid(i+1));
+//     }
+// }
+
 FilterWidget::~FilterWidget()
 {
+    qDebug() << "FilterWidget::~FilterWidget()";
     if(mCompleter)
         delete mCompleter;
 }
