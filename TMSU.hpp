@@ -8,6 +8,6 @@ namespace TMSU{
     QList<QList<QString>> getTags(const QString& dbPath);
     int addTag(const QString& tag, const QStringList& files);
     int removeTag(const QString& tag, const QStringList& files);
-    int query(const QStringList &args, const QString &wdir, QStringList &output);
+    int query(const QString &query, const QString &wdir, QStringList &output);
     int untagged(QString &wdir, QStringList &output);
 };

@@ -3,7 +3,6 @@
 #include <QWidget>
 #include <QMainWindow>
 #include <QItemSelection>
-#include <qlineedit.h>
 
 
 class QSortFilterProxyModel;
@@ -19,18 +18,8 @@ class MainWindow : public QMainWindow
 {
 public:
     MainWindow();
-    MainWindow(const QString& dir);
     ~MainWindow();
-
-    void refreshTagWidget();
-    void readSettings();
-    void writeSettings();
-
-    // dnd (https://doc.qt.io/qt-5/dnd.html)
-    void dragMoveEvent(QDragMoveEvent *event) override;
-    void dragEnterEvent(QDragEnterEvent *event) override;
-    void dropEvent(QDropEvent* event) override;
-
+    void startModelView(const QString& dir);
 
 private slots:
     void addTag(const QString& tag);
@@ -49,18 +38,27 @@ private slots:
 protected:
     void contextMenuEvent(QContextMenuEvent *event) override;
 
+    // dnd (https://doc.qt.io/qt-5/dnd.html)
+    void dragMoveEvent(QDragMoveEvent *event) override;
+    void dragEnterEvent(QDragEnterEvent *event) override;
+    void dropEvent(QDropEvent* event) override;
+
 private:
-    void setupWidgets();
+    void setupBasics();
     void openDirectory();
-    void startModelView(const QString& dir);
+
+    void refreshTagWidget();
+    void readSettings();
+    void writeSettings();
+
 
     QString mLastPath;
     QSize mDockSize;
 
     QSettings *mSettings;
 
-    ThumbnailModel *mModel;
     ThumbnailView *mView;
+    ThumbnailModel *mModel;
     QDockWidget *mDock;
     TagWidget *mTagWidget;
 

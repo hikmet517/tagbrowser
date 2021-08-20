@@ -1,9 +1,11 @@
 #pragma once
 #include <QWidget>
 #include <QAbstractListModel>
+#include <QAbstractItemModel>
 #include <QMimeDatabase>
 
 #include <KFileItem>
+#include <KIO/PreviewJob>
 
 #include "FileData.hpp"
 #include "TagWidget.hpp"
@@ -13,8 +15,9 @@ class ThumbnailModel : public QAbstractListModel
 {
     Q_OBJECT
 public:
-    ThumbnailModel(const QString &dir, QObject *parent = nullptr);
-    ThumbnailModel(const QStringList &dirs, QObject *parent = nullptr);
+    ThumbnailModel(QObject *parent = nullptr);
+
+    void loadData(const QString &dir);
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
@@ -39,6 +42,7 @@ public:
     QMimeDatabase mMimeDB;
     QString mDBPath;
     QStringList mAllTags;
+    KIO::PreviewJob *job;
 
 private:
 };

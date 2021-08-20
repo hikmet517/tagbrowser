@@ -20,7 +20,6 @@
 #include <QWidget>
 
 #include <iostream>
-#include <qfileinfo.h>
 
 #include "FilterTagProxyModel.hpp"
 #include "FilterWidget.hpp"
@@ -31,33 +30,21 @@
 
 
 MainWindow::MainWindow()
-    : QMainWindow(), mModel(nullptr), mTagWidget(nullptr),
+    : QMainWindow(), mSettings(nullptr), mView(nullptr), mModel(nullptr), mDock(nullptr), mTagWidget(nullptr),
       mFilterPathProxyModel(nullptr), mFilterTagProxyModel(nullptr)
 {
     qDebug() << "MainWindow::MainWindow()";
-    setupWidgets();
-}
-
-
-// entry point
-MainWindow::MainWindow(const QString &dir)
-    : QMainWindow(), mModel(nullptr), mTagWidget(nullptr),
-      mFilterPathProxyModel(nullptr), mFilterTagProxyModel(nullptr)
-{
-    qDebug() << "MainWindow::MainWindow(QString)";
-    setupWidgets();
-    startModelView(dir);
+    mSettings = new QSettings(this);
+    setWindowTitle(QCoreApplication::applicationName());
+    setupBasics();
+    readSettings();
 }
 
 
 void
-MainWindow::setupWidgets()
+MainWindow::setupBasics()
 {
-    qDebug() << "MainWindow::setupWidgets()";
-    mSettings = new QSettings(this);
-    setWindowTitle(QCoreApplication::applicationName());
-
-    // setup actions and widgets
+    // setup actions
     mOpenAct = new QAction(tr("&Open..."), this);
     mOpenAct->setShortcuts(QKeySequence::Open);
     mOpenAct->setToolTip(QString(tr("Open Directory (%1)")).arg(QKeySequence(QKeySequence::Open).toString()));
@@ -136,18 +123,7 @@ MainWindow::setupWidgets()
     helpMenu->addAction(mAboutAct);
     helpMenu->addAction(mAboutQtAct);
 
-    // setup view
-    mView = new ThumbnailView(this);
-    mView->setWindowTitle(tr("Files"));
-    setCentralWidget(mView);
-
-    // setup dock
-    mDock = new QDockWidget(tr("Tags"), this);
-    mDock->setFeatures(QDockWidget::DockWidgetMovable);
-    addDockWidget(Qt::RightDockWidgetArea, mDock);
-
     setAcceptDrops(true);
-    readSettings();
 }
 
 
@@ -168,10 +144,24 @@ void
 MainWindow::startModelView(const QString& dir)
 {
     qDebug() << "MainWindow::startModelView()" << dir;
+
+    // setup view
+    if(mView == nullptr) {
+        mView = new ThumbnailView(this);
+        mView->setWindowTitle(tr("Files"));
+        setCentralWidget(mView);
+    }
+
+    // setup dock
+    if(mDock == nullptr) {
+        mDock = new QDockWidget(tr("Tags"), this);
+        mDock->setFeatures(QDockWidget::DockWidgetMovable);
+        addDockWidget(Qt::RightDockWidgetArea, mDock);
+    }
+
     if(mView && mModel) {
         mView->selectionModel()->clear();
         mView->scrollToTop();
-        mView->repaint();
     }
 
     QDir tempDir = QDir(QDir(dir).absolutePath());
@@ -185,8 +175,10 @@ MainWindow::startModelView(const QString& dir)
         mClearAct->setEnabled(true);
         connect(mClearAct, &QAction::triggered, mView, &QAbstractItemView::clearSelection, Qt::UniqueConnection);
 
-        if(mModel) delete mModel;
-        mModel = new ThumbnailModel(path, this);
+        if(mModel == nullptr) {
+            mModel = new ThumbnailModel(this);
+        }
+        mModel->loadData(path);
 
         mFilterTagWidget->setEnabled(true);
         mFilterTagWidget->setCompletions(QStringList() << mModel->mAllTags << "%UNTAGGED%");
@@ -194,16 +186,26 @@ MainWindow::startModelView(const QString& dir)
         mFilterPathWidget->setEnabled(true);
         mFilterPathWidget->clear();
 
-        if(mFilterPathProxyModel) delete mFilterPathProxyModel;
-        mFilterPathProxyModel = new QSortFilterProxyModel(this);
-        mFilterPathProxyModel->setFilterRole(Qt::ToolTipRole);
-        mFilterPathProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
-        mFilterPathProxyModel->setSourceModel(mModel);
+        if(mFilterPathProxyModel == nullptr) {
+            mFilterPathProxyModel = new QSortFilterProxyModel(this);
+            mFilterPathProxyModel->setFilterRole(Qt::ToolTipRole);
+            mFilterPathProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
+            mFilterPathProxyModel->setSourceModel(mModel);
+        }
+        else {
+            mFilterPathProxyModel->setFilterRegExp("");
+            mFilterPathProxyModel->invalidate();
+        }
 
-        if(mFilterTagProxyModel) delete mFilterTagProxyModel;
-        mFilterTagProxyModel = new FilterTagProxyModel(this);
-        mFilterTagProxyModel->setSourceModel(mFilterPathProxyModel);
-        mView->setModel(mFilterTagProxyModel);
+        if(mFilterTagProxyModel == nullptr) {
+            mFilterTagProxyModel = new FilterTagProxyModel(this);
+            mFilterTagProxyModel->setSourceModel(mFilterPathProxyModel);
+            mView->setModel(mFilterTagProxyModel);
+        }
+        else {
+            mFilterTagProxyModel->setFilterFixedString("");
+            mFilterTagProxyModel->invalidate();
+        }
 
         connect(mView->selectionModel(), &QItemSelectionModel::selectionChanged,
                 this, &MainWindow::handleSelection, Qt::UniqueConnection);
@@ -214,7 +216,7 @@ MainWindow::startModelView(const QString& dir)
         connect(mView, &ThumbnailView::openDirectoryTriggered,
                 this, &MainWindow::openContainingFolder, Qt::UniqueConnection);
 
-        statusBar()->showMessage(tr("%1 files").arg(mModel->mData.size()));
+        statusBar()->showMessage(tr("%1 files").arg(mView->model()->rowCount()));
         refreshTagWidget();
     }
 }
@@ -234,7 +236,7 @@ MainWindow::handleSelection(const QItemSelection &selected, const QItemSelection
     if(selectedSize != 0)
         statusBar()->showMessage(tr("%1 files selected").arg(selectedSize));
     else
-        statusBar()->showMessage(tr("%1 files").arg(mModel->mData.size()));
+        statusBar()->showMessage(tr("%1 files").arg(mView->model()->rowCount()));
     refreshTagWidget();
 }
 
@@ -320,6 +322,7 @@ MainWindow::pathFilterChanged()
     mView->clearSelection();
     mView->scrollToTop();
     mFilterPathProxyModel->setFilterRegExp(mFilterPathWidget->text());
+    statusBar()->showMessage(tr("%1 files").arg(mView->model()->rowCount()));
 }
 
 void
@@ -337,14 +340,16 @@ MainWindow::tagFilterChanged()
     if(query.toUpper() == "%UNTAGGED%")
         res = TMSU::untagged(mModel->mRootPath, output);
     else if(!query.isEmpty())
-        res = TMSU::query(QStringList() << "files" << query, mModel->mRootPath, output);
+        res = TMSU::query(query, mModel->mRootPath, output);
 
     mFilterTagProxyModel->mFilteredData = QSet<QString>(output.begin(), output.end());
 
     if(res != 0)
         statusBar()->showMessage(tr("Query Failed, Process returned %1").arg(res));
-    else
+    else {
         mFilterTagProxyModel->setFilterFixedString(query);
+        statusBar()->showMessage(tr("%1 files").arg(mView->model()->rowCount()));
+    }
 }
 
 
@@ -384,8 +389,6 @@ MainWindow::dropEvent(QDropEvent* event)
             const QString& path = urlList.at(i).path();
             QFileInfo fi(path);
             if(fi.isDir() && fi.exists()) {
-                mFilterPathWidget->clear();
-                mFilterTagWidget->clear();
                 startModelView(path);
                 break;
             }
@@ -421,6 +424,7 @@ void
 MainWindow::writeSettings()
 {
     qDebug() << "MainWindow::writeSettings()";
+
     mSettings->beginGroup("General");
     mSettings->setValue("lastPath", mLastPath);
     mSettings->setValue("menuHidden", menuBar()->isHidden());
@@ -431,9 +435,11 @@ MainWindow::writeSettings()
     mSettings->setValue("pos", pos());
     mSettings->endGroup();
 
-    mSettings->beginGroup("Dock");
-    mSettings->setValue("size", mDock->size());
-    mSettings->endGroup();
+    if(mDock) {
+        mSettings->beginGroup("Dock");
+        mSettings->setValue("size", mDock->size());
+        mSettings->endGroup();
+    }
 }
 
 
@@ -469,8 +475,4 @@ MainWindow::~MainWindow()
 {
     qDebug() << "MainWindow::~MainWindow()";
     writeSettings();
-
-    if(mModel) delete mModel;
-    if(mFilterPathProxyModel) delete mFilterPathProxyModel;
-    if(mFilterTagProxyModel) delete mFilterTagProxyModel;
 }

@@ -102,12 +102,12 @@ TMSU::removeTag(const QString& tag, const QStringList& files)
 
 
 int
-TMSU::query(const QStringList &args, const QString &wdir, QStringList &output)
+TMSU::query(const QString &query, const QString &wdir, QStringList &output)
 {
     qDebug() << "TMSU::query()";
     QProcess p;
     p.setProgram("tmsu");
-    p.setArguments(args);
+    p.setArguments(QStringList() << "files" << query);
     p.setWorkingDirectory(wdir);
     p.setReadChannel(QProcess::StandardOutput);
     p.start();

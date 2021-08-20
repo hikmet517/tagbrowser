@@ -3,45 +3,39 @@
 #include <QFileInfo>
 #include <QSet>
 
-#include <KIO/PreviewJob>
+#include <algorithm>
 
 #include "MainWindow.hpp"
 #include "TMSU.hpp"
 #include "ThumbnailModel.hpp"
 
 
-ThumbnailModel::ThumbnailModel(const QString &dir, QObject *parent)
-    : QAbstractListModel(parent)
+ThumbnailModel::ThumbnailModel(QObject *parent)
+    : QAbstractListModel(parent), job(nullptr)
 {
+}
+
+
+void
+ThumbnailModel::loadData(const QString &dir)
+{
+    qDebug() << "ThumbnailModel::loadData()";
     mDir = dir;
+
+    // clear old data
+    beginResetModel();
+    mData.clear();
+    endResetModel();
 
     // prepare data
     getFilesFromDir(dir);
-
+    std::sort(mData.begin(), mData.end());
     // start preview job
     startPreviewJob();
 
     // get Tags
     mDBPath = TMSU::getDatabasePath(mDir);
     mRootPath = QFileInfo(QFileInfo(mDBPath).dir().path()).dir().path();
-    getTagsFromDB();
-}
-
-
-ThumbnailModel::ThumbnailModel(const QStringList &dirs, QObject *parent)
-    : QAbstractListModel(parent)
-{
-    // prepare data
-    for(const auto& dir : dirs) {
-        getFilesFromDir(dir);
-    }
-
-    // start preview job
-    startPreviewJob();
-
-    // get Tags
-    mDBPath = TMSU::getDatabasePath(mDir);
-    mRootPath = QFileInfo(QFileInfo(mDBPath).dir().canonicalPath()).dir().canonicalPath();
     getTagsFromDB();
 }
 
@@ -54,7 +48,11 @@ ThumbnailModel::getFilesFromDir(const QString& dir)
         FileData fi;
         fi.url = QUrl::fromLocalFile(it.next());
         fi.pm = QPixmap(256, 256);
+
+        // https://itqna.net/questions/52854/reset-qabstractlistmodel
+        beginInsertRows(QModelIndex(), rowCount(), rowCount());
         mData.append(fi);
+        endInsertRows();
     }
 }
 
@@ -107,6 +105,7 @@ ThumbnailModel::rowCount(const QModelIndex &parent) const
 QVariant
 ThumbnailModel::data(const QModelIndex &index, int role) const
 {
+    // qDebug() << "ThumbnailModel::data()";
     if(role == Qt::DisplayRole) {
         return mData[index.row()].url.fileName();
     }
@@ -129,6 +128,10 @@ ThumbnailModel::data(const QModelIndex &index, int role) const
 void
 ThumbnailModel::startPreviewJob()
 {
+    // if(job != nullptr) {
+    //     job->kill();
+    // }
+
     KFileItemList files;
     for(int i=0; i<mData.size(); i++)
         files.append(mData[i].url);
@@ -138,7 +141,7 @@ ThumbnailModel::startPreviewJob()
 
     // prepare job
     QSize size(256, 256);
-    KIO::PreviewJob *job = KIO::filePreview(files, size, &plugins);
+    job = KIO::filePreview(files, size, &plugins);
     connect(job, &KIO::PreviewJob::gotPreview, this, &ThumbnailModel::handleThumbSuccess);
     connect(job, &KIO::PreviewJob::failed, this, &ThumbnailModel::handleThumbFail);
     job->start();

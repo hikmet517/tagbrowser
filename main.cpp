@@ -25,17 +25,12 @@ int main(int argc, char *argv[])
     parser.addPositionalArgument("folder", "Folder to generate thumbnails for.");
     parser.process(app);
 
-    MainWindow *mw = nullptr;
-    if(parser.positionalArguments().size() == 0) {
-        mw = new MainWindow;
-    }
-    else {
+    MainWindow mw;
+    if(parser.positionalArguments().size() != 0) {
         QString dir = parser.positionalArguments().at(0);
-        mw = new MainWindow(QDir(dir).canonicalPath());
+        mw.startModelView(QDir(dir).canonicalPath());
     }
 
-    mw->show();
-    int ret = app.exec();
-    delete mw;
-    return ret;
+    mw.show();
+    return app.exec();
 }

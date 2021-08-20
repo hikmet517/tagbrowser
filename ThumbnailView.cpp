@@ -4,7 +4,7 @@
 #include <QScrollBar>
 #include <QKeyEvent>
 #include <QMenu>
-#include <qnamespace.h>
+#include <QStyle>
 
 
 ThumbnailView::ThumbnailView(QWidget *parent) : QListView(parent)
@@ -17,6 +17,7 @@ ThumbnailView::ThumbnailView(QWidget *parent) : QListView(parent)
     setVerticalScrollMode(ScrollPerPixel);
     setHorizontalScrollMode(ScrollPerPixel);
     verticalScrollBar()->setSingleStep(40);
+    setSelectionRectVisible(true);
 
     mOpenFileAct = new QAction(tr("Open file"), this);
     mOpenFileAct->setIcon(QIcon::fromTheme("document-open"));

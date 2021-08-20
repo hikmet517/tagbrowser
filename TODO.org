@@ -6,7 +6,6 @@
 ** repair database
 ** send all files to player
 ** auto tagging, by looking a specific file in a directory
-* context menu
 * add sorting
 * run processes asynchroniously (a task queue maybe)
 * cross-platform:
