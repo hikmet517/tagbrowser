@@ -207,5 +207,15 @@ ThumbnailModel::getAllTags()
 
 ThumbnailModel::~ThumbnailModel()
 {
-    delete mJob;
+    qDebug() << "ThumbnailModel::~ThumbnailModel()";
+    if(mJob) {
+        if(mJob->isRunning()) {
+            mJob->requestInterruption();
+            connect(mJob, &ThumbnailJob::finished, mJob, &QObject::deleteLater);
+            mJob->wait();
+        }
+        else {
+            delete mJob;
+        }
+    }
 }
