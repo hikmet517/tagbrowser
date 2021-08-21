@@ -11,7 +11,7 @@
 
 
 ThumbnailModel::ThumbnailModel(QObject *parent)
-    : QAbstractListModel(parent), job(nullptr)
+    : QAbstractListModel(parent), mJob(nullptr)
 {
 }
 
@@ -50,7 +50,8 @@ ThumbnailModel::getFilesFromDir(const QString& dir)
         fi.pm = QPixmap(256, 256);
 
         // https://itqna.net/questions/52854/reset-qabstractlistmodel
-        beginInsertRows(QModelIndex(), rowCount(), rowCount());
+        int rows = rowCount();
+        beginInsertRows(QModelIndex(), rows, rows);
         mData.append(fi);
         endInsertRows();
     }
@@ -115,11 +116,11 @@ ThumbnailModel::data(const QModelIndex &index, int role) const
     else if(role == Qt::DecorationRole){
         return mData[index.row()].pm;
     }
-    else if(role == Qt::SizeHintRole){
-        return QSize(290, 290);
+    else if(role == Qt::SizeHintRole) {
+        return QSize(264, 284);
     }
     else if(role == Qt::TextAlignmentRole) {
-        return int(Qt::AlignHCenter | Qt::AlignTop);
+        return int(Qt::AlignHCenter | Qt::AlignCenter);
     }
     return QVariant();
 }
@@ -128,49 +129,32 @@ ThumbnailModel::data(const QModelIndex &index, int role) const
 void
 ThumbnailModel::startPreviewJob()
 {
-    // if(job != nullptr) {
-    //     job->kill();
-    // }
-
-    KFileItemList files;
+    QStringList files;
     for(int i=0; i<mData.size(); i++)
-        files.append(mData[i].url);
+        files.append(mData[i].url.path());
 
-    // prepare plugins
-    QStringList plugins = KIO::PreviewJob::availablePlugins();
-
-    // prepare job
-    QSize size(256, 256);
-    job = KIO::filePreview(files, size, &plugins);
-    connect(job, &KIO::PreviewJob::gotPreview, this, &ThumbnailModel::handleThumbSuccess);
-    connect(job, &KIO::PreviewJob::failed, this, &ThumbnailModel::handleThumbFail);
-    job->start();
-}
-
-
-void
-ThumbnailModel::handleThumbSuccess(const KFileItem& item, const QPixmap& preview)
-{
-    // qDebug() << "handleThumbSuccess";
-    for(int i=0; i<mData.size(); i++){
-        if(mData[i].url == item.url()) {
-            mData[i].pm = preview;
-            QModelIndex topLeft = createIndex(i, 0);
-            emit dataChanged(topLeft, topLeft, {Qt::DecorationRole});
-            break;
+    if(mJob) {
+        if(mJob->isRunning()) {
+            mJob->requestInterruption();
+            connect(mJob, &ThumbnailJob::finished, mJob, &QObject::deleteLater);
+        }
+        else {
+            delete mJob;
         }
     }
+
+    mJob = new ThumbnailJob(files, this);
+    connect(mJob, &ThumbnailJob::thumbnailReady, this, &ThumbnailModel::handleThumbnail);
+    mJob->start();
 }
 
 
 void
-ThumbnailModel::handleThumbFail(const KFileItem& item)
+ThumbnailModel::handleThumbnail(const QString &filepath, const QPixmap &pm)
 {
-    qDebug() << "ThumbnailModel::handleThumbFail()";
     for(int i=0; i<mData.size(); i++){
-        if(mData[i].url == item.url()) {
-            QMimeType mt = mMimeDB.mimeTypeForFile(mData[i].url.path());
-            mData[i].pm = QIcon::fromTheme(mt.name()).pixmap(256);
+        if(mData[i].url.path() == filepath) {
+            mData[i].pm = pm;
             QModelIndex topLeft = createIndex(i, 0);
             emit dataChanged(topLeft, topLeft, {Qt::DecorationRole});
             break;
@@ -218,4 +202,10 @@ QStringList
 ThumbnailModel::getAllTags()
 {
     return mAllTags;
+}
+
+
+ThumbnailModel::~ThumbnailModel()
+{
+    delete mJob;
 }

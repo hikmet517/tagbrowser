@@ -358,7 +358,6 @@ MainWindow::tagFilterChanged()
 void
 MainWindow::dragMoveEvent(QDragMoveEvent *event)
 {
-    qDebug() << "MainWindow::dragMoveEvent()";
     if (event->mimeData()->hasFormat("text/plain"))
         event->acceptProposedAction();
 }
@@ -367,7 +366,6 @@ MainWindow::dragMoveEvent(QDragMoveEvent *event)
 void
 MainWindow::dragEnterEvent(QDragEnterEvent *event)
 {
-    qDebug() << "MainWindow::dragEnterEvent()";
     if (event->mimeData()->hasFormat("text/plain"))
         event->acceptProposedAction();
 }

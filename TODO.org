@@ -9,6 +9,5 @@
 * add sorting
 * run processes asynchroniously (a task queue maybe)
 * cross-platform:
-** write a thumbnailer
 ** handle double-click open
 * refresh button to catch file changes

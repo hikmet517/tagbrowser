@@ -4,11 +4,9 @@
 #include <QAbstractItemModel>
 #include <QMimeDatabase>
 
-#include <KFileItem>
-#include <KIO/PreviewJob>
-
 #include "FileData.hpp"
 #include "TagWidget.hpp"
+#include "ThumbnailJob.hpp"
 
 
 class ThumbnailModel : public QAbstractListModel
@@ -16,6 +14,7 @@ class ThumbnailModel : public QAbstractListModel
     Q_OBJECT
 public:
     ThumbnailModel(QObject *parent = nullptr);
+    ~ThumbnailModel();
 
     void loadData(const QString &dir);
 
@@ -25,8 +24,7 @@ public:
     void getFilesFromDir(const QString& dir);
     void startPreviewJob();
 
-    void handleThumbSuccess(const KFileItem& item, const QPixmap& preview);
-    void handleThumbFail(const KFileItem& item);
+    void handleThumbnail(const QString &filepath, const QPixmap &pm);
 
     void getTagsFromDB();
     QStringList getSelectedTags();
@@ -42,7 +40,7 @@ public:
     QMimeDatabase mMimeDB;
     QString mDBPath;
     QStringList mAllTags;
-    KIO::PreviewJob *job;
+    ThumbnailJob *mJob;
 
 private:
 };

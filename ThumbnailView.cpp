@@ -12,7 +12,7 @@ ThumbnailView::ThumbnailView(QWidget *parent) : QListView(parent)
     qDebug() << "ThumbnailView::ThumbnailView()";
     setViewMode(QListView::IconMode);
     setResizeMode(QListView::Adjust);
-    setUniformItemSizes(true);
+    // setUniformItemSizes(true);
     setSelectionMode(QAbstractItemView::ExtendedSelection);
     setVerticalScrollMode(ScrollPerPixel);
     setHorizontalScrollMode(ScrollPerPixel);
@@ -31,6 +31,7 @@ ThumbnailView::ThumbnailView(QWidget *parent) : QListView(parent)
     addAction(mOpenDirAct);
     setContextMenuPolicy(Qt::ActionsContextMenu);
 }
+
 
 void
 ThumbnailView::keyPressEvent(QKeyEvent *event)

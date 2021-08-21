@@ -30,11 +30,12 @@ add_executable(tagbrowser
   FilterWidget.cpp
   FilterTagProxyModel.hpp
   FilterTagProxyModel.cpp
+  ThumbnailJob.hpp
+  ThumbnailJob.cpp
   )
 
-find_package(KF5KIO REQUIRED)
 find_package(Qt5 COMPONENTS Widgets REQUIRED)
 find_package(Qt5 COMPONENTS Core REQUIRED)
 find_package(SQLite3 REQUIRED)
 
-target_link_libraries(tagbrowser Qt5::Widgets Qt5::Core  KF5::KIOCore KF5::KIOFileWidgets KF5::KIOWidgets KF5::KIONTLM sqlite3)
+target_link_libraries(tagbrowser Qt5::Widgets Qt5::Core sqlite3 ffmpegthumbnailer)
