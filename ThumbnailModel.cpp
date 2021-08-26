@@ -116,12 +116,6 @@ ThumbnailModel::data(const QModelIndex &index, int role) const
     else if(role == Qt::DecorationRole){
         return mData[index.row()].pm;
     }
-    else if(role == Qt::SizeHintRole) {
-        return QSize(264, 284);
-    }
-    else if(role == Qt::TextAlignmentRole) {
-        return int(Qt::AlignHCenter | Qt::AlignCenter);
-    }
     return QVariant();
 }
 

@@ -1,9 +1,12 @@
 #include <iostream>
 
 #include <QImage>
+#include <QPainter>
 #include <QPixmap>
 #include <QIcon>
 #include <QDebug>
+#include <qnamespace.h>
+#include <qpixmap.h>
 
 #include "ThumbnailJob.hpp"
 
@@ -34,24 +37,24 @@ ThumbnailJob::run()
         QPixmap pm = res.value<QPixmap>();
         bool dbSuccessful = !pm.isNull();
         if(dbSuccessful) {
-            emit thumbnailReady(filepath, pm);
+            emit thumbnailReady(filepath, alignPixmap(pm));
             continue;
         }
 
         // generate thumbnail
-        if(type == "image") {
+        if (type == "image") {
             try {
-                QPixmap img(filepath);
-                img = img.scaled(256, 256, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-                sqlite.putThumbnailToDb(filepath, img);
-                emit thumbnailReady(filepath, img);
+                QPixmap pm(filepath);
+                pm = pm.scaled(256, 256, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                sqlite.putThumbnailToDb(filepath, pm);
+                emit thumbnailReady(filepath, alignPixmap(pm));
             }
             catch (std::exception &e) {
                 std::cerr << e.what() << std::endl;
                 continue;
             }
         }
-        else if( type == "video" ) {
+        else if ( type == "video" ) {
             try {
                 mThumbnailer->generateThumbnail(filepath.toStdString(),
                                                 ThumbnailerImageTypeEnum::Png,
@@ -59,26 +62,38 @@ ThumbnailJob::run()
                 QPixmap pm;
                 pm.loadFromData(&mBuffer[0], mBuffer.size());
                 sqlite.putThumbnailToDb(filepath, pm);
-                emit thumbnailReady(filepath, pm);
+                emit thumbnailReady(filepath, alignPixmap(pm));
             }
             catch (std::exception &e) {
                 std::cerr << e.what() << std::endl;
                 continue;
             }
         }
+        // no thumbnail, load icon instead
         else {
             QPixmap pm = QIcon::fromTheme(mt.genericIconName()).pixmap(256, 256);
-            emit thumbnailReady(filepath, pm);
+            emit thumbnailReady(filepath, alignPixmap(pm));
         }
 
         // check for termination
         if( (i+1)%5 == 0 ) {
             if(QThread::currentThread()->isInterruptionRequested()) {
-                std::cout << "Interruption Requested" << std::endl;
+                qDebug() << "Interruption Requested";
                 return;
             }
         }
     }
+}
+
+
+QPixmap
+ThumbnailJob::alignPixmap(const QPixmap &pm)
+{
+    QPixmap temp(256, 256);
+    temp.fill(QColor(0, 0, 0, 0));
+    QPainter painter(&temp);
+    painter.drawPixmap((256-pm.width())/2.0, 256-pm.height(), pm);
+    return temp;
 }
 
 

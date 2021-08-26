@@ -13,9 +13,9 @@
 int main(int argc, char *argv[])
 {
     // to enable qDebug()
-// #ifndef NDEBUG
+#ifndef NDEBUG
     QLoggingCategory::defaultCategory()->setEnabled(QtDebugMsg, true);
-// #endif
+#endif
 
     QApplication app(argc, argv);
     QCoreApplication::setApplicationName("tagbrowser");

@@ -27,6 +27,8 @@ signals:
 
 private:
     void run() override;
+    QPixmap alignPixmap(const QPixmap &pm);
+
     QStringList mFiles;
     VideoThumbnailer *mThumbnailer;
     FilmStripFilter *mStripFilter;

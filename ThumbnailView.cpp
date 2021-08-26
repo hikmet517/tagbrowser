@@ -12,7 +12,8 @@ ThumbnailView::ThumbnailView(QWidget *parent) : QListView(parent)
     qDebug() << "ThumbnailView::ThumbnailView()";
     setViewMode(QListView::IconMode);
     setResizeMode(QListView::Adjust);
-    // setUniformItemSizes(true);
+    setUniformItemSizes(true);
+    setSpacing(2);
     setSelectionMode(QAbstractItemView::ExtendedSelection);
     setVerticalScrollMode(ScrollPerPixel);
     setHorizontalScrollMode(ScrollPerPixel);
