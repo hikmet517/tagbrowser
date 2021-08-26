@@ -38,6 +38,7 @@ ThumbnailJob::run()
             continue;
         }
 
+        // generate thumbnail
         if(type == "image") {
             try {
                 QPixmap img(filepath);
@@ -64,16 +65,18 @@ ThumbnailJob::run()
                 std::cerr << e.what() << std::endl;
                 continue;
             }
-            if( (i+1)%4 == 0 ) {
-                if(isInterruptionRequested()) {
-                    std::cout << "Interruption Requested" << std::endl;
-                    return;
-                }
-            }
         }
         else {
             QPixmap pm = QIcon::fromTheme(mt.genericIconName()).pixmap(256, 256);
             emit thumbnailReady(filepath, pm);
+        }
+
+        // check for termination
+        if( (i+1)%5 == 0 ) {
+            if(QThread::currentThread()->isInterruptionRequested()) {
+                std::cout << "Interruption Requested" << std::endl;
+                return;
+            }
         }
     }
 }
