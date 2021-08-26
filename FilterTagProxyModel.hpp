@@ -1,5 +1,7 @@
 #pragma once
 #include <QSortFilterProxyModel>
+#include <QSet>
+#include <QString>
 
 
 class FilterTagProxyModel : public QSortFilterProxyModel

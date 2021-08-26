@@ -32,6 +32,8 @@ add_executable(tagbrowser
   FilterTagProxyModel.cpp
   ThumbnailJob.hpp
   ThumbnailJob.cpp
+  ThumbnailJobSQLite.hpp
+  ThumbnailJobSQLite.cpp
   )
 
 find_package(Qt5 COMPONENTS Widgets REQUIRED)

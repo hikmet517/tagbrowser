@@ -1,5 +1,3 @@
-#include <QDebug>
-
 #include "FilterTagProxyModel.hpp"
 
 

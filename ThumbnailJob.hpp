@@ -8,6 +8,7 @@
 #include <libffmpegthumbnailer/videothumbnailer.h>
 #include <libffmpegthumbnailer/filmstripfilter.h>
 
+#include "ThumbnailJobSQLite.hpp"
 
 using ffmpegthumbnailer::VideoThumbnailer;
 using ffmpegthumbnailer::FilmStripFilter;
@@ -31,4 +32,5 @@ private:
     FilmStripFilter *mStripFilter;
     vector<uint8_t> mBuffer;
     QMimeDatabase mMimeDB;
+    ThumbnailJobSQLite sqlite;
 };

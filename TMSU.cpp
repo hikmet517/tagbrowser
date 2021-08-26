@@ -62,13 +62,12 @@ TMSU::getTags(const QString& dbPath)
 
     QList<QList<QString>> data;
     rc = sqlite3_exec(db, sql, callback, &data, &zErrMsg);
-    if(rc){
+    if(rc) {
         std::cerr << zErrMsg << std::endl;
         sqlite3_free(zErrMsg);
     }
 
     sqlite3_close(db);
-
     return data;
 }
 
