@@ -92,7 +92,7 @@ ThumbnailJob::alignPixmap(const QPixmap &pm)
     QPixmap temp(256, 256);
     temp.fill(QColor(0, 0, 0, 0));
     QPainter painter(&temp);
-    painter.drawPixmap((256-pm.width())/2.0, 256-pm.height(), pm);
+    painter.drawPixmap((256-pm.width())/2, 256-pm.height(), pm);
     return temp;
 }
 

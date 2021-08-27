@@ -30,7 +30,7 @@ ThumbnailJobSQLite::ThumbnailJobSQLite()
 QVariant
 ThumbnailJobSQLite::getThumbnail(const QString &filepath)
 {
-    qDebug() << "ThumbnailJobSQLite::getThumbnail()";
+    // qDebug() << "ThumbnailJobSQLite::getThumbnail()";
     QString dbPath = getDbPath(filepath);
 
     if ( !QFileInfo(dbPath).exists() ) {
@@ -107,8 +107,7 @@ ThumbnailJobSQLite::createDb(const QString &dbPath)
 QVariant
 ThumbnailJobSQLite::getThumbnailFromDb(sqlite3 *db, const QString &filepath)
 {
-    qDebug() << "ThumbnailJobSQLite::getThumbnailFromDb()";
-
+    // qDebug() << "ThumbnailJobSQLite::getThumbnailFromDb()";
     sqlite3_stmt *ppStmt;
     char sql[] = "SELECT thumbnail FROM THUMBNAILS WHERE file=?";
     int rc = sqlite3_prepare_v2(db, sql, -1, &ppStmt, NULL);
@@ -150,7 +149,7 @@ ThumbnailJobSQLite::getThumbnailFromDb(sqlite3 *db, const QString &filepath)
 bool
 ThumbnailJobSQLite::putThumbnailToDb(const QString &filepath, const QPixmap &pm)
 {
-    qDebug() << "ThumbnailJobSQLite::putThumbnailToDb()";
+    // qDebug() << "ThumbnailJobSQLite::putThumbnailToDb()";
     QString dbPath = getDbPath(filepath);
     sqlite3 *db = dbMap[dbPath];
 
@@ -173,6 +172,7 @@ ThumbnailJobSQLite::putThumbnailToDb(const QString &filepath, const QPixmap &pm)
     rc = sqlite3_step(ppStmt);
     if( rc != SQLITE_DONE ) {
         std::cerr << "putThumbnailToDb() Error in sqlite3_step, returned: " << rc << std::endl;
+        std::cerr << sqlite3_errmsg(db) << std::endl;
         sqlite3_reset(ppStmt);
         sqlite3_finalize(ppStmt);
         return false;

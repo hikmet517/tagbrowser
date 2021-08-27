@@ -344,8 +344,13 @@ MainWindow::tagFilterChanged()
 
     mFilterTagProxyModel->mFilteredData = QSet<QString>(output.begin(), output.end());
 
-    if(res != 0)
+    if(res != 0) {
+        QMessageBox msg = QMessageBox(QMessageBox::Information,
+                                      "Query Failed",
+                                      QString("Process returned %1").arg(res));
+        msg.exec();
         statusBar()->showMessage(tr("Query Failed, Process returned %1").arg(res));
+    }
     else {
         mFilterTagProxyModel->setFilterFixedString(query);
         statusBar()->showMessage(tr("%1 files").arg(mView->model()->rowCount()));

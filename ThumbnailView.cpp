@@ -12,6 +12,7 @@ ThumbnailView::ThumbnailView(QWidget *parent) : QListView(parent)
     qDebug() << "ThumbnailView::ThumbnailView()";
     setViewMode(QListView::IconMode);
     setResizeMode(QListView::Adjust);
+    setStyleSheet("QListView::item { width: 256px; }");
     setUniformItemSizes(true);
     setSpacing(2);
     setSelectionMode(QAbstractItemView::ExtendedSelection);
