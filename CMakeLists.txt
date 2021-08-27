@@ -4,40 +4,11 @@ project(tagbrowser)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
+add_subdirectory(src)
 add_compile_options(-Wall -Wextra -pedantic -Werror)
-
-add_executable(tagbrowser
-  main.cpp
-  MainWindow.hpp
-  MainWindow.cpp
-  TMSU.hpp
-  TMSU.cpp
-  FileData.hpp
-  ThumbnailModel.hpp
-  ThumbnailModel.cpp
-  ThumbnailView.hpp
-  ThumbnailView.cpp
-  TagWidget.hpp
-  TagWidget.cpp
-  TagEdit.hpp
-  TagEdit.cpp
-  FilterWidget.hpp
-  FilterWidget.cpp
-  FilterTagProxyModel.hpp
-  FilterTagProxyModel.cpp
-  ThumbnailJob.hpp
-  ThumbnailJob.cpp
-  ThumbnailJobSQLite.hpp
-  ThumbnailJobSQLite.cpp
-  )
-
-find_package(Qt5 COMPONENTS Widgets REQUIRED)
-find_package(Qt5 COMPONENTS Core REQUIRED)
-find_package(SQLite3 REQUIRED)
-
-target_link_libraries(tagbrowser Qt5::Widgets Qt5::Core sqlite3 ffmpegthumbnailer)
