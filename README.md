@@ -3,5 +3,5 @@
 Browse/add/remove tmsu tags
 
 ## Dependencies
-    - Qt 5
+    - Qt5
     - ffmpegthumbnailer

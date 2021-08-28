@@ -1,4 +1,4 @@
-add_executable(tagbrowser
+set(tagbrowser_SOURCES
   main.cpp
   MainWindow.hpp
   MainWindow.cpp
@@ -21,11 +21,16 @@ add_executable(tagbrowser
   ThumbnailJob.cpp
   ThumbnailJobSQLite.hpp
   ThumbnailJobSQLite.cpp
-  )
+)
+
+if(WIN32)
+  add_executable(tagbrowser WIN32 ${tagbrowser_SOURCES})
+else()
+  add_executable(tagbrowser ${tagbrowser_SOURCES})
+endif()
 
 
-find_package(Qt5 COMPONENTS Widgets REQUIRED)
-find_package(Qt5 COMPONENTS Core REQUIRED)
+find_package(Qt5 COMPONENTS Widgets Core REQUIRED)
 find_package(SQLite3 REQUIRED)
 
 target_link_libraries(tagbrowser Qt5::Widgets Qt5::Core sqlite3 ffmpegthumbnailer)

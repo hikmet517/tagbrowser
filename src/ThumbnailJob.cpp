@@ -30,7 +30,9 @@ ThumbnailJob::run()
     for(int i=0; i<mFiles.size(); i++) {
         const QString &filepath = mFiles[i];
         QMimeType mt = mMimeDB.mimeTypeForFile(filepath);
-        QString type = mt.name().split('/')[0];
+        QStringList types = mt.name().split('/');
+        QString type = types[0];
+        QString subType = types[1];
 
         // check cached db first
         QVariant res = sqlite.getThumbnail(filepath);
@@ -42,7 +44,7 @@ ThumbnailJob::run()
         }
 
         // generate thumbnail
-        if (type == "image") {
+        if (type == "image" && !subType.startsWith('x')) {
             try {
                 QPixmap pm(filepath);
                 pm = pm.scaled(256, 256, Qt::KeepAspectRatio, Qt::SmoothTransformation);
@@ -71,7 +73,10 @@ ThumbnailJob::run()
         }
         // no thumbnail, load icon instead
         else {
-            QPixmap pm = QIcon::fromTheme(mt.genericIconName()).pixmap(256, 256);
+            QString iconName = mt.iconName();
+            if (iconName.isEmpty())
+                iconName = mt.genericIconName();
+            QPixmap pm = QIcon::fromTheme(iconName).pixmap(256, 256);
             emit thumbnailReady(filepath, alignPixmap(pm));
         }
 
