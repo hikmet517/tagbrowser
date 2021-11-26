@@ -15,7 +15,7 @@ using ffmpegthumbnailer::FilmStripFilter;
 using std::vector;
 
 
-class ThumbnailJob : public QThread
+class ThumbnailJob : public QObject
 {
     Q_OBJECT
 public:
@@ -25,8 +25,10 @@ public:
 signals:
     void thumbnailReady(const QString &filepath, const QPixmap &pm);
 
+public slots:
+    void getThumnails(int beg, int end);
+
 private:
-    void run() override;
     QPixmap alignPixmap(const QPixmap &pm);
 
     QStringList mFiles;

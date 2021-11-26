@@ -5,6 +5,7 @@
 
 #include <algorithm>
 
+#include "FileData.hpp"
 #include "MainWindow.hpp"
 #include "TMSU.hpp"
 #include "ThumbnailModel.hpp"
@@ -20,12 +21,15 @@ void
 ThumbnailModel::loadData(const QString &dir)
 {
     qDebug() << "ThumbnailModel::loadData()";
-    mDir = dir;
 
     // clear old data
-    beginResetModel();
-    mData.clear();
-    endResetModel();
+    if (mData.size() != 0) {
+        beginResetModel();
+        mData.clear();
+        mProcessedCount = 0;
+        mSelected.clear();
+        endResetModel();
+    }
 
     // prepare data
     getFilesFromDir(dir);
@@ -34,26 +38,61 @@ ThumbnailModel::loadData(const QString &dir)
     startPreviewJob();
 
     // get Tags
-    mDBPath = TMSU::getDatabasePath(mDir);
+    mDBPath = TMSU::getDatabasePath(dir);
+    qDebug() << "mDBPath:" << mDBPath;
     mRootPath = QFileInfo(QFileInfo(mDBPath).dir().path()).dir().path();
+    qDebug() << "mRootPath:" << mRootPath;
     getTagsFromDB();
 }
 
+void
+ThumbnailModel::loadData(const QStringList &files)
+{
+    qDebug() << "ThumbnailModel::loadData(files)";
+
+    // clear old data
+    if (mData.size() != 0) {
+        beginResetModel();
+        mData.clear();
+        mProcessedCount = 0;
+        mSelected.clear();
+        endResetModel();
+    }
+
+    // prepare data
+    getFilesFromFiles(files);
+    std::sort(mData.begin(), mData.end());
+    // start preview job
+    startPreviewJob();
+
+    // get Tags
+    mDBPath = TMSU::getDatabasePath(QFileInfo(files[0]).dir().path());
+    qDebug() << "mDBPath:" << mDBPath;
+    mRootPath = QFileInfo(QFileInfo(mDBPath).dir().path()).dir().path();
+    qDebug() << "mRootPath:" << mRootPath;
+    getTagsFromDB();
+}
 
 void
 ThumbnailModel::getFilesFromDir(const QString& dir)
 {
     QDirIterator it(dir, QDir::Files, QDirIterator::Subdirectories);
-    while (it.hasNext()){
+    while (it.hasNext()) {
         FileData fi;
         fi.url = QUrl::fromLocalFile(it.next());
         fi.pm = QPixmap(256, 256);
-
-        // https://itqna.net/questions/52854/reset-qabstractlistmodel
-        int rows = rowCount();
-        beginInsertRows(QModelIndex(), rows, rows);
         mData.append(fi);
-        endInsertRows();
+    }
+}
+
+void
+ThumbnailModel::getFilesFromFiles(const QStringList& files)
+{
+    for(int i=0; i<files.size(); i++) {
+        FileData fi;
+        fi.url = QUrl::fromLocalFile(files[i]);
+        fi.pm = QPixmap(256, 256);
+        mData.append(fi);
     }
 }
 
@@ -99,7 +138,7 @@ int
 ThumbnailModel::rowCount(const QModelIndex &parent) const
 {
     (void)parent;
-    return mData.size();
+    return parent.isValid() ? 0 : mProcessedCount;
 }
 
 
@@ -107,6 +146,12 @@ QVariant
 ThumbnailModel::data(const QModelIndex &index, int role) const
 {
     // qDebug() << "ThumbnailModel::data()";
+    if (!index.isValid())
+        return QVariant();
+
+    if (index.row() >= mData.size() || index.row() < 0)
+        return QVariant();
+
     if(role == Qt::DisplayRole) {
         return mData[index.row()].url.fileName();
     }
@@ -115,10 +160,38 @@ ThumbnailModel::data(const QModelIndex &index, int role) const
     }
     else if(role == Qt::DecorationRole){
         return mData[index.row()].pm;
+        // return QIcon::fromTheme("edit-undo").pixmap(256, 256);
     }
     return QVariant();
 }
 
+bool
+ThumbnailModel::canFetchMore(const QModelIndex &parent) const
+{
+    qDebug() << "ThumbnailModel::canFetchMore()";
+    bool res = mProcessedCount != mData.size();
+    qDebug() << "res:" << res;
+    return res;
+}
+
+void
+ThumbnailModel::fetchMore(const QModelIndex &parent) {
+    qDebug() << "ThumbnailModel::fetchMore()," << parent.isValid();
+    int remainder = mData.size() - mProcessedCount;
+    int itemsToFetch = qMin(50, remainder);
+
+    if (itemsToFetch <= 0)
+        return;
+
+    int beg = mProcessedCount;
+    int end = mProcessedCount + itemsToFetch - 1;
+
+    beginInsertRows(QModelIndex(), beg, end);
+    emit prepareThumbnail(beg, end);
+    mProcessedCount += itemsToFetch;
+    qDebug() << "mProcessedCount:" << mProcessedCount;
+    endInsertRows();
+}
 
 void
 ThumbnailModel::startPreviewJob()
@@ -127,19 +200,15 @@ ThumbnailModel::startPreviewJob()
     for(int i=0; i<mData.size(); i++)
         files.append(mData[i].url.path());
 
-    if(mJob) {
-        if(mJob->isRunning()) {
-            mJob->requestInterruption();
-            connect(mJob, &ThumbnailJob::finished, mJob, &QObject::deleteLater);
-        }
-        else {
-            delete mJob;
-        }
-    }
+    mJob.quit();
+    mJob.wait();
 
-    mJob = new ThumbnailJob(files, this);
-    connect(mJob, &ThumbnailJob::thumbnailReady, this, &ThumbnailModel::handleThumbnail);
-    mJob->start();
+    ThumbnailJob *job = new ThumbnailJob(files, this);
+    job->moveToThread(&mJob);
+    connect(&mJob, &QThread::finished, job, &QObject::deleteLater);
+    connect(this, &ThumbnailModel::prepareThumbnail, job, &ThumbnailJob::getThumnails);
+    connect(job, &ThumbnailJob::thumbnailReady, this, &ThumbnailModel::handleThumbnail);
+    mJob.start();
 }
 
 
@@ -202,14 +271,6 @@ ThumbnailModel::getAllTags()
 ThumbnailModel::~ThumbnailModel()
 {
     qDebug() << "ThumbnailModel::~ThumbnailModel()";
-    if(mJob) {
-        if(mJob->isRunning()) {
-            mJob->requestInterruption();
-            connect(mJob, &ThumbnailJob::finished, mJob, &QObject::deleteLater);
-            mJob->wait();
-        }
-        else {
-            delete mJob;
-        }
-    }
+    mJob.quit();
+    mJob.wait();
 }

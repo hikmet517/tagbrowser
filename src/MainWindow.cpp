@@ -18,6 +18,7 @@
 #include <QStatusBar>
 #include <QToolBar>
 #include <QWidget>
+#include <QInputDialog>
 
 #include <iostream>
 
@@ -48,7 +49,7 @@ MainWindow::setupBasics()
     mOpenAct = new QAction(tr("&Open..."), this);
     mOpenAct->setShortcuts(QKeySequence::Open);
     mOpenAct->setToolTip(QString(tr("Open Directory (%1)")).arg(QKeySequence(QKeySequence::Open).toString()));
-    mOpenAct->setIcon(QIcon::fromTheme("document-open"));
+    mOpenAct->setIcon(QIcon::fromTheme("document-open-folder"));
     connect(mOpenAct, &QAction::triggered, this, &MainWindow::openDirectory);
 
     mSelectAct = new QAction(tr("Select &All"), this);
@@ -95,6 +96,11 @@ MainWindow::setupBasics()
     mHideMenuAct->setIcon(QIcon::fromTheme("show-menu"));
     connect(mHideMenuAct, &QAction::triggered, this, &MainWindow::toggleMenuHide);
 
+    mQueryAct = new QAction(tr("Query DB by Tag"), this);
+    mQueryAct->setShortcuts(QKeySequence::Find);
+    mHideMenuAct->setToolTip(tr("Query database by tags, a folder must be opened first"));
+    mQueryAct->setIcon(QIcon::fromTheme("search"));
+    connect(mQueryAct, &QAction::triggered, this, &MainWindow::query);
 
     // setup toolbar
     mToolBar = new QToolBar(this);
@@ -102,6 +108,7 @@ MainWindow::setupBasics()
     mToolBar->setFloatable(false);
     mToolBar->setWindowTitle(tr("Main Toolbar"));
     mToolBar->addAction(mOpenAct);
+    mToolBar->addAction(mQueryAct);
     mToolBar->addAction(mSelectAct);
     mToolBar->addAction(mClearAct);
     mToolBar->addAction(mHideMenuAct);
@@ -119,6 +126,7 @@ MainWindow::setupBasics()
     QMenu * editMenu = menuBar()->addMenu(tr("&Edit"));
     editMenu->addAction(mSelectAct);
     editMenu->addAction(mClearAct);
+    editMenu->addAction(mQueryAct);
     QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
     helpMenu->addAction(mAboutAct);
     helpMenu->addAction(mAboutQtAct);
@@ -240,6 +248,24 @@ MainWindow::handleSelection(const QItemSelection &selected, const QItemSelection
     refreshTagWidget();
 }
 
+void
+MainWindow::query()
+{
+    qDebug() << "MainWindow::query()";
+    if(mModel->mRootPath.isEmpty())
+        return;
+    bool ok;
+    QString text = QInputDialog::getText(this, tr("Query by tags"),
+                                         tr("Query:"), QLineEdit::Normal,
+                                         "", &ok);
+    if (ok && !text.isEmpty()) {
+        QStringList output;
+        int res = TMSU::query(text, mModel->mRootPath, output);
+        if (res == 0) {
+            mModel->loadData(output);
+        }
+    }
+}
 
 void
 MainWindow::openFile(const QModelIndex &index)
@@ -342,6 +368,7 @@ MainWindow::tagFilterChanged()
     else if(!query.isEmpty())
         res = TMSU::query(query, mModel->mRootPath, output);
 
+    qDebug() << output;
     mFilterTagProxyModel->mFilteredData = QSet<QString>(output.begin(), output.end());
 
     if(res != 0) {

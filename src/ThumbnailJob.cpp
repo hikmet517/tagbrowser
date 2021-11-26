@@ -15,7 +15,6 @@ using ffmpegthumbnailer::FilmStripFilter;
 
 
 ThumbnailJob::ThumbnailJob(const QStringList &files, QObject *parent)
-    : QThread(parent)
 {
     mFiles = files;
     mThumbnailer = new VideoThumbnailer(256, true, true, 8, true);
@@ -25,9 +24,9 @@ ThumbnailJob::ThumbnailJob(const QStringList &files, QObject *parent)
 
 
 void
-ThumbnailJob::run()
+ThumbnailJob::getThumnails(int beg, int end)
 {
-    for(int i=0; i<mFiles.size(); i++) {
+    for(int i=beg; i<=end; i++) {
         const QString &filepath = mFiles[i];
         QMimeType mt = mMimeDB.mimeTypeForFile(filepath);
         QStringList types = mt.name().split('/');

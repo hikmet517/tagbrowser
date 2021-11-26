@@ -29,6 +29,7 @@ private slots:
     void tagFilterChanged();
 
     void handleSelection(const QItemSelection &selected, const QItemSelection &deselected);
+    void query();
     void openFile(const QModelIndex &index);
     void openContainingFolder(const QModelIndex &index);
 
@@ -70,6 +71,7 @@ private:
     QAction *mAboutAct;
     QAction *mAboutQtAct;
     QAction *mHideMenuAct;
+    QAction *mQueryAct;
     QToolBar *mToolBar;
 
     FilterWidget *mFilterPathWidget;

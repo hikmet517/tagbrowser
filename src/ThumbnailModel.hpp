@@ -17,11 +17,15 @@ public:
     ~ThumbnailModel();
 
     void loadData(const QString &dir);
+    void loadData(const QStringList &files);
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
+    bool canFetchMore(const QModelIndex &parent) const override;
+    void fetchMore(const QModelIndex &parent) override;
 
     void getFilesFromDir(const QString& dir);
+    void getFilesFromFiles(const QStringList& files);
     void startPreviewJob();
 
     void handleThumbnail(const QString &filepath, const QPixmap &pm);
@@ -35,12 +39,15 @@ public:
     // fix here
     QList<FileData> mData;
     QSet<int> mSelected;
-    QString mDir;
     QString mRootPath;
     QMimeDatabase mMimeDB;
     QString mDBPath;
     QStringList mAllTags;
-    ThumbnailJob *mJob;
+    QThread mJob;
+    int mProcessedCount = 0;
+
+signals:
+    void prepareThumbnail(int beg, int end);
 
 private:
 };

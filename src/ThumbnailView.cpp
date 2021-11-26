@@ -5,6 +5,7 @@
 #include <QKeyEvent>
 #include <QMenu>
 #include <QStyle>
+#include <qlistview.h>
 
 
 ThumbnailView::ThumbnailView(QWidget *parent) : QListView(parent)
@@ -44,6 +45,12 @@ ThumbnailView::keyPressEvent(QKeyEvent *event)
     QAbstractItemView::keyPressEvent(event);
 }
 
+// void
+// ThumbnailView::paintEvent(QPaintEvent *e)
+// {
+//     // qDebug() << e->rect();
+//     QListView::paintEvent(e);
+// }
 
 void
 ThumbnailView::handleOpenFile()
