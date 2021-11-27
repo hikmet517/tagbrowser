@@ -3,14 +3,12 @@
 #include <QWidget>
 #include <QMainWindow>
 #include <QItemSelection>
+#include "FileData.hpp"
 
-
-class QSortFilterProxyModel;
 class ThumbnailModel;
 class ThumbnailView;
 class TagWidget;
 class FilterWidget;
-class FilterTagProxyModel;
 class QCompleter;
 class QSettings;
 
@@ -20,6 +18,7 @@ public:
     MainWindow();
     ~MainWindow();
     void startModelView(const QString& dir);
+    void printCountStatus();
 
 private slots:
     void addTag(const QString& tag);
@@ -52,7 +51,6 @@ private:
     void readSettings();
     void writeSettings();
 
-
     QString mLastPath;
     QSize mDockSize;
 
@@ -71,11 +69,8 @@ private:
     QAction *mAboutAct;
     QAction *mAboutQtAct;
     QAction *mHideMenuAct;
-    QAction *mQueryAct;
     QToolBar *mToolBar;
 
     FilterWidget *mFilterPathWidget;
     FilterWidget *mFilterTagWidget;
-    QSortFilterProxyModel *mFilterPathProxyModel;
-    FilterTagProxyModel *mFilterTagProxyModel;
 };

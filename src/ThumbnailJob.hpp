@@ -26,7 +26,7 @@ signals:
     void thumbnailReady(const QString &filepath, const QPixmap &pm);
 
 public slots:
-    void getThumnails(int beg, int end);
+    void getThumbnails(int beg, int end);
 
 private:
     QPixmap alignPixmap(const QPixmap &pm);

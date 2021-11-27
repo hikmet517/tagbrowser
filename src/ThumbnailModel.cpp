@@ -1,9 +1,11 @@
 #include <QDebug>
-#include <QDirIterator>
 #include <QFileInfo>
+#include <QDir>
 #include <QSet>
+#include <QDirIterator>
 
 #include <algorithm>
+#include <qfileinfo.h>
 
 #include "FileData.hpp"
 #include "MainWindow.hpp"
@@ -18,99 +20,93 @@ ThumbnailModel::ThumbnailModel(QObject *parent)
 
 
 void
-ThumbnailModel::loadData(const QString &dir)
+ThumbnailModel::load(const QString& dbpath)
 {
-    qDebug() << "ThumbnailModel::loadData()";
+    qDebug() << "ThumbnailModel::load()";
 
-    // clear old data
-    if (mData.size() != 0) {
+    mDBPath = dbpath;
+    qDebug() << "mDBPath:" << mDBPath;
+    mRootPath = QFileInfo(QFileInfo(mDBPath).dir().path()).dir().path();
+    qDebug() << "mRootPath:" << mRootPath;
+
+    clearData();
+
+    getFilesForData(getAllFiles());
+    getTagsForData();
+
+    mFullData = mData;
+
+    // start preview job
+    startPreviewJob();
+}
+
+void
+ThumbnailModel::load(const QStringList& files)
+{
+    qDebug() << "ThumbnailModel::load(files)";
+
+    clearData();
+
+    if(files.isEmpty()) {
+        return;
+    }
+
+    getFilesForData(files);
+    getTagsForData();
+
+    // start preview job
+    startPreviewJob();
+}
+
+void
+ThumbnailModel::clearData()
+{
+    if(mData.size() != 0) {
         beginResetModel();
         mData.clear();
         mProcessedCount = 0;
         mSelected.clear();
         endResetModel();
     }
-
-    // prepare data
-    getFilesFromDir(dir);
-    std::sort(mData.begin(), mData.end());
-    // start preview job
-    startPreviewJob();
-
-    // get Tags
-    mDBPath = TMSU::getDatabasePath(dir);
-    qDebug() << "mDBPath:" << mDBPath;
-    mRootPath = QFileInfo(QFileInfo(mDBPath).dir().path()).dir().path();
-    qDebug() << "mRootPath:" << mRootPath;
-    getTagsFromDB();
 }
 
-void
-ThumbnailModel::loadData(const QStringList &files)
+QStringList
+ThumbnailModel::getAllFiles()
 {
-    qDebug() << "ThumbnailModel::loadData(files)";
-
-    // clear old data
-    if (mData.size() != 0) {
-        beginResetModel();
-        mData.clear();
-        mProcessedCount = 0;
-        mSelected.clear();
-        endResetModel();
-    }
-
-    // prepare data
-    getFilesFromFiles(files);
-    std::sort(mData.begin(), mData.end());
-    // start preview job
-    startPreviewJob();
-
-    // get Tags
-    mDBPath = TMSU::getDatabasePath(QFileInfo(files[0]).dir().path());
-    qDebug() << "mDBPath:" << mDBPath;
-    mRootPath = QFileInfo(QFileInfo(mDBPath).dir().path()).dir().path();
-    qDebug() << "mRootPath:" << mRootPath;
-    getTagsFromDB();
-}
-
-void
-ThumbnailModel::getFilesFromDir(const QString& dir)
-{
-    QDirIterator it(dir, QDir::Files, QDirIterator::Subdirectories);
+    // GET FILEPATHS AND DEFAULT PIXMAPS
+    QStringList files;
+    QDirIterator it(mRootPath, QDir::Files | QDir::Hidden, QDirIterator::Subdirectories);
     while (it.hasNext()) {
-        FileData fi;
-        fi.url = QUrl::fromLocalFile(it.next());
-        fi.pm = QPixmap(256, 256);
-        mData.append(fi);
+        files.append(it.next());
     }
+    return files;
 }
 
+
 void
-ThumbnailModel::getFilesFromFiles(const QStringList& files)
+ThumbnailModel::getFilesForData(const QStringList& files)
 {
+    // GET FILEPATHS AND DEFAULT PIXMAPS
     for(int i=0; i<files.size(); i++) {
         FileData fi;
         fi.url = QUrl::fromLocalFile(files[i]);
         fi.pm = QPixmap(256, 256);
         mData.append(fi);
     }
+    std::sort(mData.begin(), mData.end());
 }
 
-
 void
-ThumbnailModel::getTagsFromDB()
+ThumbnailModel::getTagsForData()
 {
-    qDebug() << "ThumbnailModel::getTagsFromDB()";
-    // read db
+    // GET TAGS
     QList<QList<QString>> tags = TMSU::getTags(mDBPath);
 
     // create a hash set and a list of all tags
     QSet<QString> allTags;
     QHash<QString, QSet<QString>> tagHashSet;
     for(int i=0; i<tags.size(); i++){
-        QString path = QDir(mRootPath + QDir::separator() + tags[i][0]
-                            + QDir::separator() + tags[i][1]).canonicalPath();
-
+        QString path = QDir(mRootPath + "/" + tags[i][0] + "/" + tags[i][1]).canonicalPath();
         QString tag = tags[i][2];
         if(!tags[i][3].isEmpty())
             tag += "=" + tags[i][3];
@@ -130,8 +126,16 @@ ThumbnailModel::getTagsFromDB()
         else
             mData[i].tags.clear();
     }
-}
 
+    // fill tags of FileData (mFullData)
+    for(int i=0; i<mFullData.size(); i++) {
+        const auto& path = mFullData[i].url.path();
+        if(tagHashSet.contains(path))
+            mFullData[i].tags = tagHashSet[path];
+        else
+            mFullData[i].tags.clear();
+    }
+}
 
 
 int
@@ -178,7 +182,7 @@ void
 ThumbnailModel::fetchMore(const QModelIndex &parent) {
     qDebug() << "ThumbnailModel::fetchMore()," << parent.isValid();
     int remainder = mData.size() - mProcessedCount;
-    int itemsToFetch = qMin(50, remainder);
+    int itemsToFetch = qMin(100, remainder);
 
     if (itemsToFetch <= 0)
         return;
@@ -206,7 +210,7 @@ ThumbnailModel::startPreviewJob()
     ThumbnailJob *job = new ThumbnailJob(files, this);
     job->moveToThread(&mJob);
     connect(&mJob, &QThread::finished, job, &QObject::deleteLater);
-    connect(this, &ThumbnailModel::prepareThumbnail, job, &ThumbnailJob::getThumnails);
+    connect(this, &ThumbnailModel::prepareThumbnail, job, &ThumbnailJob::getThumbnails);
     connect(job, &ThumbnailJob::thumbnailReady, this, &ThumbnailModel::handleThumbnail);
     mJob.start();
 }
@@ -254,17 +258,11 @@ ThumbnailModel::getSelectedPaths()
     return paths;
 }
 
+
 bool
 ThumbnailModel::hasSelected()
 {
     return !mSelected.isEmpty();
-}
-
-
-QStringList
-ThumbnailModel::getAllTags()
-{
-    return mAllTags;
 }
 
 

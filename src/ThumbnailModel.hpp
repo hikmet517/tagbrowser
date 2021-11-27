@@ -3,6 +3,7 @@
 #include <QAbstractListModel>
 #include <QAbstractItemModel>
 #include <QMimeDatabase>
+#include <QHash>
 
 #include "FileData.hpp"
 #include "TagWidget.hpp"
@@ -16,38 +17,38 @@ public:
     ThumbnailModel(QObject *parent = nullptr);
     ~ThumbnailModel();
 
-    void loadData(const QString &dir);
-    void loadData(const QStringList &files);
+    void load(const QString& dbpath);
+    void load(const QStringList& files);
+    QStringList getAllFiles();
+    void getFilesForData(const QStringList& files);
+    void getTagsForData();
+    void clearData();
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     bool canFetchMore(const QModelIndex &parent) const override;
     void fetchMore(const QModelIndex &parent) override;
 
-    void getFilesFromDir(const QString& dir);
-    void getFilesFromFiles(const QStringList& files);
     void startPreviewJob();
 
     void handleThumbnail(const QString &filepath, const QPixmap &pm);
 
-    void getTagsFromDB();
     QStringList getSelectedTags();
     QStringList getSelectedPaths();
     bool hasSelected();
-    QStringList getAllTags();
 
     // fix here
     QList<FileData> mData;
-    QSet<int> mSelected;
-    QString mRootPath;
-    QMimeDatabase mMimeDB;
+    QList<FileData> mFullData;
     QString mDBPath;
+    QString mRootPath;
     QStringList mAllTags;
+
+    QSet<int> mSelected;
+    QMimeDatabase mMimeDB;
     QThread mJob;
     int mProcessedCount = 0;
 
 signals:
     void prepareThumbnail(int beg, int end);
-
-private:
 };

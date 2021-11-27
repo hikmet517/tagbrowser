@@ -24,7 +24,7 @@ ThumbnailJob::ThumbnailJob(const QStringList &files, QObject *parent)
 
 
 void
-ThumbnailJob::getThumnails(int beg, int end)
+ThumbnailJob::getThumbnails(int beg, int end)
 {
     for(int i=beg; i<=end; i++) {
         const QString &filepath = mFiles[i];

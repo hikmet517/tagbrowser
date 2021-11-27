@@ -14,15 +14,11 @@
 #include <QProcess>
 #include <QScreen>
 #include <QSettings>
-#include <QSortFilterProxyModel>
 #include <QStatusBar>
 #include <QToolBar>
-#include <QWidget>
-#include <QInputDialog>
 
 #include <iostream>
 
-#include "FilterTagProxyModel.hpp"
 #include "FilterWidget.hpp"
 #include "MainWindow.hpp"
 #include "TMSU.hpp"
@@ -31,8 +27,7 @@
 
 
 MainWindow::MainWindow()
-    : QMainWindow(), mSettings(nullptr), mView(nullptr), mModel(nullptr), mDock(nullptr), mTagWidget(nullptr),
-      mFilterPathProxyModel(nullptr), mFilterTagProxyModel(nullptr)
+    : QMainWindow(), mSettings(nullptr), mView(nullptr), mModel(nullptr), mDock(nullptr), mTagWidget(nullptr)
 {
     qDebug() << "MainWindow::MainWindow()";
     mSettings = new QSettings(this);
@@ -70,7 +65,7 @@ MainWindow::setupBasics()
     connect(mFilterPathWidget, &FilterWidget::returnPressed, this, &MainWindow::pathFilterChanged);
     mFilterPathWidget->setDisabled(true);
 
-    mFilterTagWidget = new FilterWidget(tr("Filter by tag using boolean logic"), this);
+    mFilterTagWidget = new FilterWidget(tr("Query tags using boolean logic"), this);
     connect(mFilterTagWidget, &FilterWidget::returnPressed, this, &MainWindow::tagFilterChanged);
     mFilterTagWidget->setDisabled(true);
 
@@ -96,24 +91,17 @@ MainWindow::setupBasics()
     mHideMenuAct->setIcon(QIcon::fromTheme("show-menu"));
     connect(mHideMenuAct, &QAction::triggered, this, &MainWindow::toggleMenuHide);
 
-    mQueryAct = new QAction(tr("Query DB by Tag"), this);
-    mQueryAct->setShortcuts(QKeySequence::Find);
-    mHideMenuAct->setToolTip(tr("Query database by tags, a folder must be opened first"));
-    mQueryAct->setIcon(QIcon::fromTheme("search"));
-    connect(mQueryAct, &QAction::triggered, this, &MainWindow::query);
-
     // setup toolbar
     mToolBar = new QToolBar(this);
     mToolBar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     mToolBar->setFloatable(false);
     mToolBar->setWindowTitle(tr("Main Toolbar"));
     mToolBar->addAction(mOpenAct);
-    mToolBar->addAction(mQueryAct);
     mToolBar->addAction(mSelectAct);
     mToolBar->addAction(mClearAct);
     mToolBar->addAction(mHideMenuAct);
-    mToolBar->addWidget(mFilterPathWidget);
     mToolBar->addWidget(mFilterTagWidget);
+    mToolBar->addWidget(mFilterPathWidget);
     mToolBar->addWidget(mFiller);
     mToolBar->addAction(mExitAct);
     addToolBar(mToolBar);
@@ -126,7 +114,6 @@ MainWindow::setupBasics()
     QMenu * editMenu = menuBar()->addMenu(tr("&Edit"));
     editMenu->addAction(mSelectAct);
     editMenu->addAction(mClearAct);
-    editMenu->addAction(mQueryAct);
     QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
     helpMenu->addAction(mAboutAct);
     helpMenu->addAction(mAboutQtAct);
@@ -186,7 +173,9 @@ MainWindow::startModelView(const QString& dir)
         if(mModel == nullptr) {
             mModel = new ThumbnailModel(this);
         }
-        mModel->loadData(path);
+
+        auto dbpath = TMSU::getDatabasePath(path);
+        mModel->load(dbpath);
 
         mFilterTagWidget->setEnabled(true);
         mFilterTagWidget->setCompletions(QStringList() << mModel->mAllTags << "%UNTAGGED%");
@@ -194,29 +183,12 @@ MainWindow::startModelView(const QString& dir)
         mFilterPathWidget->setEnabled(true);
         mFilterPathWidget->clear();
 
-        if(mFilterPathProxyModel == nullptr) {
-            mFilterPathProxyModel = new QSortFilterProxyModel(this);
-            mFilterPathProxyModel->setFilterRole(Qt::ToolTipRole);
-            mFilterPathProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
-            mFilterPathProxyModel->setSourceModel(mModel);
-        }
-        else {
-            mFilterPathProxyModel->setFilterRegExp("");
-            mFilterPathProxyModel->invalidate();
-        }
-
-        if(mFilterTagProxyModel == nullptr) {
-            mFilterTagProxyModel = new FilterTagProxyModel(this);
-            mFilterTagProxyModel->setSourceModel(mFilterPathProxyModel);
-            mView->setModel(mFilterTagProxyModel);
-        }
-        else {
-            mFilterTagProxyModel->setFilterFixedString("");
-            mFilterTagProxyModel->invalidate();
-        }
+        mView->setModel(mModel);
 
         connect(mView->selectionModel(), &QItemSelectionModel::selectionChanged,
                 this, &MainWindow::handleSelection, Qt::UniqueConnection);
+        connect(mView->model(), &QAbstractItemModel::rowsInserted,
+                this, &MainWindow::printCountStatus, Qt::UniqueConnection);
         connect(mView, &ThumbnailView::doubleClicked,
                 this, &MainWindow::openFile, Qt::UniqueConnection);
         connect(mView, &ThumbnailView::returnPressed,
@@ -224,56 +196,42 @@ MainWindow::startModelView(const QString& dir)
         connect(mView, &ThumbnailView::openDirectoryTriggered,
                 this, &MainWindow::openContainingFolder, Qt::UniqueConnection);
 
-        statusBar()->showMessage(tr("%1 files").arg(mView->model()->rowCount()));
+        printCountStatus();
         refreshTagWidget();
     }
 }
 
+void
+MainWindow::printCountStatus()
+{
+    statusBar()->showMessage(tr("%1 of %2 files").arg(mView->model()->rowCount()).arg(mModel->mData.count()));
+}
 
 void
 MainWindow::handleSelection(const QItemSelection &selected, const QItemSelection &deselected)
 {
     qDebug() << "MainWindow::handleSelection()";
     for(const auto& index : selected.indexes()) {
-        mModel->mSelected.insert(mFilterPathProxyModel->mapToSource(mFilterTagProxyModel->mapToSource(index)).row());
+        mModel->mSelected.insert(index.row());
     }
     for(const auto& index : deselected.indexes()) {
-        mModel->mSelected.remove(mFilterPathProxyModel->mapToSource(mFilterTagProxyModel->mapToSource(index)).row());
+        mModel->mSelected.remove(index.row());
     }
     int selectedSize = mModel->mSelected.size();
     if(selectedSize != 0)
         statusBar()->showMessage(tr("%1 files selected").arg(selectedSize));
     else
-        statusBar()->showMessage(tr("%1 files").arg(mView->model()->rowCount()));
+        printCountStatus();
     refreshTagWidget();
 }
 
-void
-MainWindow::query()
-{
-    qDebug() << "MainWindow::query()";
-    if(mModel->mRootPath.isEmpty())
-        return;
-    bool ok;
-    QString text = QInputDialog::getText(this, tr("Query by tags"),
-                                         tr("Query:"), QLineEdit::Normal,
-                                         "", &ok);
-    if (ok && !text.isEmpty()) {
-        QStringList output;
-        int res = TMSU::query(text, mModel->mRootPath, output);
-        if (res == 0) {
-            mModel->loadData(output);
-        }
-    }
-}
 
 void
 MainWindow::openFile(const QModelIndex &index)
 {
     qDebug() << "MainWindow::openFile()";
     // for windows start (cmd) or Invoke-Item (powershell)
-    int i = mFilterPathProxyModel->mapToSource(mFilterTagProxyModel->mapToSource(index)).row();
-    QProcess::startDetached("xdg-open", QStringList() << mModel->mData[i].url.path());
+    QProcess::startDetached("xdg-open", QStringList() << mModel->mData[index.row()].url.path());
 }
 
 
@@ -281,8 +239,7 @@ void
 MainWindow::openContainingFolder(const QModelIndex &index)
 {
     qDebug() << "MainWindow::openFile()";
-    int i = mFilterPathProxyModel->mapToSource(mFilterTagProxyModel->mapToSource(index)).row();
-    QString dir = QFileInfo(mModel->mData[i].url.path()).dir().path();
+    QString dir = QFileInfo(mModel->mData[index.row()].url.path()).dir().path();
     QProcess::startDetached("xdg-open", QStringList() << dir);
 }
 
@@ -293,7 +250,7 @@ MainWindow::addTag(const QString& tag)
     qDebug() << "MainWindow::addTag()";
     int res = TMSU::addTag(tag, mModel->getSelectedPaths());
     if(res == 0) {
-        mModel->getTagsFromDB();
+        mModel->getTagsForData();
         refreshTagWidget();
         mTagWidget->setFocus();
         mFilterTagWidget->setCompletions(QStringList() << mModel->mAllTags << "%UNTAGGED%");
@@ -310,7 +267,7 @@ MainWindow::removeTag(const QString& tag)
     qDebug() << "MainWindow::remove()";
     int res = TMSU::removeTag(tag, mModel->getSelectedPaths());
     if(res == 0) {
-        mModel->getTagsFromDB();
+        mModel->getTagsForData();
         refreshTagWidget();
         mFilterTagWidget->setCompletions(QStringList() << mModel->mAllTags << "%UNTAGGED%");
     }
@@ -329,7 +286,7 @@ MainWindow::refreshTagWidget()
         mTagWidget = nullptr;
     }
 
-    mTagWidget = new TagWidget(mModel->getSelectedTags(), mModel->getAllTags());
+    mTagWidget = new TagWidget(mModel->getSelectedTags(), mModel->mAllTags);
     connect(mTagWidget, &TagWidget::addTagClicked, this, &MainWindow::addTag);
     connect(mTagWidget, &TagWidget::removeTagClicked, this, &MainWindow::removeTag);
     if(!mModel->hasSelected()) {
@@ -347,8 +304,28 @@ MainWindow::pathFilterChanged()
     mModel->mSelected.clear();
     mView->clearSelection();
     mView->scrollToTop();
-    mFilterPathProxyModel->setFilterRegExp(mFilterPathWidget->text());
-    statusBar()->showMessage(tr("%1 files").arg(mView->model()->rowCount()));
+    QStringList filtered;
+    const auto& text = mFilterPathWidget->text();
+
+    if(text.isEmpty()) {
+        if (!mFilterTagWidget->text().isEmpty()) {
+            tagFilterChanged();
+        }
+        else if (!mModel->mDBPath.isEmpty()) {
+            mModel->load(mModel->mDBPath);
+            return;
+        }
+    }
+
+    QRegExp regex(text, Qt::CaseInsensitive);
+    for(int i=0; i<mModel->mData.size(); i++) {
+        if (mModel->mData[i].url.path().contains(regex)) {
+            filtered.append(mModel->mData[i].url.path());
+        }
+    }
+
+    mModel->load(filtered);
+    printCountStatus();
 }
 
 void
@@ -359,17 +336,31 @@ MainWindow::tagFilterChanged()
     mView->clearSelection();
     mView->scrollToTop();
     QString query = mFilterTagWidget->text();
-    mFilterTagProxyModel->mFilteredData.clear();
+
+    mFilterPathWidget->setText("");
 
     QStringList output;
     int res = 0;
-    if(query.toUpper() == "%UNTAGGED%")
-        res = TMSU::untagged(mModel->mRootPath, output);
-    else if(!query.isEmpty())
-        res = TMSU::query(query, mModel->mRootPath, output);
 
-    qDebug() << output;
-    mFilterTagProxyModel->mFilteredData = QSet<QString>(output.begin(), output.end());
+    if(query.isEmpty()) {
+        if (!mModel->mDBPath.isEmpty()) {
+            mModel->load(mModel->mDBPath);
+            return;
+        }
+    }
+
+    if(query.toUpper() == "%UNTAGGED%") {
+        res = TMSU::untagged(mModel->mRootPath, output);
+        QStringList temp;
+        for(const auto& path : output) {
+            if (QFileInfo(path).isFile())
+                temp.append(path);
+        }
+        output = temp;
+    }
+    else {
+        res = TMSU::query(query, mModel->mRootPath, output);
+    }
 
     if(res != 0) {
         QMessageBox msg = QMessageBox(QMessageBox::Information,
@@ -379,8 +370,7 @@ MainWindow::tagFilterChanged()
         statusBar()->showMessage(tr("Query Failed, Process returned %1").arg(res));
     }
     else {
-        mFilterTagProxyModel->setFilterFixedString(query);
-        statusBar()->showMessage(tr("%1 files").arg(mView->model()->rowCount()));
+        mModel->load(output);
     }
 }
 
