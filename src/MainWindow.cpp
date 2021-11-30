@@ -1,5 +1,7 @@
 #include <QAction>
 #include <QApplication>
+#include <QComboBox>
+#include <QDateTime>
 #include <QDebug>
 #include <QDockWidget>
 #include <QDrag>
@@ -12,13 +14,20 @@
 #include <QMessageBox>
 #include <QMimeData>
 #include <QProcess>
+#include <QRegularExpression>
 #include <QScreen>
 #include <QSettings>
 #include <QStatusBar>
 #include <QToolBar>
 
 #include <iostream>
+#include <qbuttongroup.h>
+#include <qcombobox.h>
+#include <qfileinfo.h>
+#include <qpushbutton.h>
+#include <qradiobutton.h>
 
+#include "FileData.hpp"
 #include "FilterWidget.hpp"
 #include "MainWindow.hpp"
 #include "TMSU.hpp"
@@ -60,8 +69,8 @@ MainWindow::setupBasics()
     mClearAct->setDisabled(true);
 
     mFilterPathWidget = new FilterWidget(tr("Filter by path using regex"),
-                                         {".*.(mp4|avi|mkv|mov|wmv|webm)$",
-                                          ".*.(jpg|jpeg|png|bmp|gif|webp)"}, this);
+                                         {"^.*.(mp4|m4v|avi|mkv|mov|wmv|webm|flv)$",
+                                          "^.*.(jpg|jpeg|png|bmp|gif|webp)$"}, this);
     connect(mFilterPathWidget, &FilterWidget::returnPressed, this, &MainWindow::pathFilterChanged);
     mFilterPathWidget->setDisabled(true);
 
@@ -85,11 +94,19 @@ MainWindow::setupBasics()
     mAboutQtAct->setStatusTip(tr("Show the Qt library's About box"));
     connect(mAboutQtAct, &QAction::triggered, qApp, &QApplication::aboutQt);
 
-    mHideMenuAct = new QAction(tr("Toggle Menu Bar"), this);
-    mHideMenuAct->setToolTip(tr("Show/hide Menu Bar (Ctrl+M)"));
-    mHideMenuAct->setShortcut(tr("Ctrl+M"));
-    mHideMenuAct->setIcon(QIcon::fromTheme("show-menu"));
-    connect(mHideMenuAct, &QAction::triggered, this, &MainWindow::toggleMenuHide);
+    // mHideMenuAct = new QAction(tr("Toggle Menu Bar"), this);
+    // mHideMenuAct->setToolTip(tr("Show/hide Menu Bar (Ctrl+M)"));
+    // mHideMenuAct->setShortcut(tr("Ctrl+M"));
+    // mHideMenuAct->setIcon(QIcon::fromTheme("show-menu"));
+    // connect(mHideMenuAct, &QAction::triggered, this, &MainWindow::toggleMenuHide);
+
+    mSortBox = new QComboBox(this);
+    mSortBox->insertItems(0, {"Name", "Modified"});
+    connect(mSortBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::sortChanged);
+
+    mSortStyleBox = new QComboBox(this);
+    mSortStyleBox->insertItems(0, {"Ascending", "Descending"});
+    connect(mSortStyleBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::sortChanged);
 
     // setup toolbar
     mToolBar = new QToolBar(this);
@@ -99,24 +116,28 @@ MainWindow::setupBasics()
     mToolBar->addAction(mOpenAct);
     mToolBar->addAction(mSelectAct);
     mToolBar->addAction(mClearAct);
-    mToolBar->addAction(mHideMenuAct);
+    // mToolBar->addAction(mHideMenuAct);
     mToolBar->addWidget(mFilterTagWidget);
     mToolBar->addWidget(mFilterPathWidget);
+
+    mToolBar->addWidget(mSortBox);
+    mToolBar->addWidget(mSortStyleBox);
+
     mToolBar->addWidget(mFiller);
     mToolBar->addAction(mExitAct);
     addToolBar(mToolBar);
 
-    // setup menubar
-    QMenu * fileMenu = menuBar()->addMenu(tr("&File"));
-    fileMenu->addAction(mOpenAct);
-    fileMenu->addSeparator();
-    fileMenu->addAction(mExitAct);
-    QMenu * editMenu = menuBar()->addMenu(tr("&Edit"));
-    editMenu->addAction(mSelectAct);
-    editMenu->addAction(mClearAct);
-    QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
-    helpMenu->addAction(mAboutAct);
-    helpMenu->addAction(mAboutQtAct);
+    // // setup menubar
+    // QMenu * fileMenu = menuBar()->addMenu(tr("&File"));
+    // fileMenu->addAction(mOpenAct);
+    // fileMenu->addSeparator();
+    // fileMenu->addAction(mExitAct);
+    // QMenu * editMenu = menuBar()->addMenu(tr("&Edit"));
+    // editMenu->addAction(mSelectAct);
+    // editMenu->addAction(mClearAct);
+    // QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
+    // helpMenu->addAction(mAboutAct);
+    // helpMenu->addAction(mAboutQtAct);
 
     setAcceptDrops(true);
 }
@@ -163,22 +184,22 @@ MainWindow::startModelView(const QString& dir)
     QString path = tempDir.canonicalPath();
     if(!path.isEmpty() && tempDir.exists()) {
         mLastPath = path;
-        setWindowTitle(QCoreApplication::applicationName() + " — " + tempDir.dirName());
 
         mSelectAct->setEnabled(true);
         connect(mSelectAct, &QAction::triggered, mView, &QAbstractItemView::selectAll, Qt::UniqueConnection);
         mClearAct->setEnabled(true);
         connect(mClearAct, &QAction::triggered, mView, &QAbstractItemView::clearSelection, Qt::UniqueConnection);
 
-        if(mModel == nullptr) {
-            mModel = new ThumbnailModel(this);
+        if(mModel != nullptr) {
+            delete mModel;
         }
-
         auto dbpath = TMSU::getDatabasePath(path);
-        mModel->load(dbpath);
+        mModel = new ThumbnailModel(dbpath, mSortBox->currentIndex(), mSortStyleBox->currentIndex(), this);
+
+        setWindowTitle(QCoreApplication::applicationName() + " — " + mModel->getRootPath());
 
         mFilterTagWidget->setEnabled(true);
-        mFilterTagWidget->setCompletions(QStringList() << mModel->mAllTags << "%UNTAGGED%");
+        mFilterTagWidget->setCompletions(QStringList() << mModel->getAllTags() << "%UNTAGGED%");
         mFilterTagWidget->clear();
         mFilterPathWidget->setEnabled(true);
         mFilterPathWidget->clear();
@@ -204,7 +225,7 @@ MainWindow::startModelView(const QString& dir)
 void
 MainWindow::printCountStatus()
 {
-    statusBar()->showMessage(tr("%1 of %2 files").arg(mView->model()->rowCount()).arg(mModel->mData.count()));
+    statusBar()->showMessage(tr("%1 of %2 files").arg(mView->model()->rowCount()).arg(mModel->getDataCount()));
 }
 
 void
@@ -212,12 +233,12 @@ MainWindow::handleSelection(const QItemSelection &selected, const QItemSelection
 {
     qDebug() << "MainWindow::handleSelection()";
     for(const auto& index : selected.indexes()) {
-        mModel->mSelected.insert(index.row());
+        mModel->addSelected(index.row());
     }
     for(const auto& index : deselected.indexes()) {
-        mModel->mSelected.remove(index.row());
+        mModel->removeSelected(index.row());
     }
-    int selectedSize = mModel->mSelected.size();
+    int selectedSize = mModel->getSelectedSize();
     if(selectedSize != 0)
         statusBar()->showMessage(tr("%1 files selected").arg(selectedSize));
     else
@@ -231,7 +252,7 @@ MainWindow::openFile(const QModelIndex &index)
 {
     qDebug() << "MainWindow::openFile()";
     // for windows start (cmd) or Invoke-Item (powershell)
-    QProcess::startDetached("xdg-open", QStringList() << mModel->mData[index.row()].url.path());
+    QProcess::startDetached("xdg-open", QStringList() << mModel->getFilePath(index.row()));
 }
 
 
@@ -239,7 +260,7 @@ void
 MainWindow::openContainingFolder(const QModelIndex &index)
 {
     qDebug() << "MainWindow::openFile()";
-    QString dir = QFileInfo(mModel->mData[index.row()].url.path()).dir().path();
+    QString dir = QFileInfo(mModel->getFilePath(index.row())).dir().path();
     QProcess::startDetached("xdg-open", QStringList() << dir);
 }
 
@@ -253,7 +274,7 @@ MainWindow::addTag(const QString& tag)
         mModel->getTagsForData();
         refreshTagWidget();
         mTagWidget->setFocus();
-        mFilterTagWidget->setCompletions(QStringList() << mModel->mAllTags << "%UNTAGGED%");
+        mFilterTagWidget->setCompletions(QStringList() << mModel->getAllTags() << "%UNTAGGED%");
     }
     else {
         statusBar()->showMessage(tr("Tag cannot be added, Process returned %1").arg(res));
@@ -269,7 +290,7 @@ MainWindow::removeTag(const QString& tag)
     if(res == 0) {
         mModel->getTagsForData();
         refreshTagWidget();
-        mFilterTagWidget->setCompletions(QStringList() << mModel->mAllTags << "%UNTAGGED%");
+        mFilterTagWidget->setCompletions(QStringList() << mModel->getAllTags() << "%UNTAGGED%");
     }
     else {
         statusBar()->showMessage(tr("Tag cannot be removed, Process returned %1").arg(res));
@@ -286,7 +307,7 @@ MainWindow::refreshTagWidget()
         mTagWidget = nullptr;
     }
 
-    mTagWidget = new TagWidget(mModel->getSelectedTags(), mModel->mAllTags);
+    mTagWidget = new TagWidget(mModel->getSelectedTags(), mModel->getAllTags());
     connect(mTagWidget, &TagWidget::addTagClicked, this, &MainWindow::addTag);
     connect(mTagWidget, &TagWidget::removeTagClicked, this, &MainWindow::removeTag);
     if(!mModel->hasSelected()) {
@@ -301,7 +322,7 @@ void
 MainWindow::pathFilterChanged()
 {
     qDebug() << "MainWindow::pathFilterChanged()";
-    mModel->mSelected.clear();
+    mModel->clearSelected();
     mView->clearSelection();
     mView->scrollToTop();
     QStringList filtered;
@@ -311,20 +332,13 @@ MainWindow::pathFilterChanged()
         if (!mFilterTagWidget->text().isEmpty()) {
             tagFilterChanged();
         }
-        else if (!mModel->mDBPath.isEmpty()) {
-            mModel->load(mModel->mDBPath);
+        else if (!mModel->getDBPath().isEmpty()) {
+            mModel->resetToAll();
             return;
         }
     }
 
-    QRegExp regex(text, Qt::CaseInsensitive);
-    for(int i=0; i<mModel->mData.size(); i++) {
-        if (mModel->mData[i].url.path().contains(regex)) {
-            filtered.append(mModel->mData[i].url.path());
-        }
-    }
-
-    mModel->load(filtered);
+    mModel->filterByRegex(text);
     printCountStatus();
 }
 
@@ -332,7 +346,7 @@ void
 MainWindow::tagFilterChanged()
 {
     qDebug() << "MainWindow::tagFilterChanged()";
-    mModel->mSelected.clear();
+    mModel->clearSelected();
     mView->clearSelection();
     mView->scrollToTop();
     QString query = mFilterTagWidget->text();
@@ -343,14 +357,12 @@ MainWindow::tagFilterChanged()
     int res = 0;
 
     if(query.isEmpty()) {
-        if (!mModel->mDBPath.isEmpty()) {
-            mModel->load(mModel->mDBPath);
-            return;
-        }
+        mModel->resetToAll();
+        return;
     }
 
     if(query.toUpper() == "%UNTAGGED%") {
-        res = TMSU::untagged(mModel->mRootPath, output);
+        res = TMSU::untagged(mModel->getRootPath(), output);
         QStringList temp;
         for(const auto& path : output) {
             if (QFileInfo(path).isFile())
@@ -359,7 +371,7 @@ MainWindow::tagFilterChanged()
         output = temp;
     }
     else {
-        res = TMSU::query(query, mModel->mRootPath, output);
+        res = TMSU::query(query, mModel->getRootPath(), output);
     }
 
     if(res != 0) {
@@ -370,11 +382,16 @@ MainWindow::tagFilterChanged()
         statusBar()->showMessage(tr("Query Failed, Process returned %1").arg(res));
     }
     else {
-        mModel->load(output);
+        mModel->filterByFiles(QSet<QString>(output.begin(), output.end()));
     }
 }
 
-
+void
+MainWindow::sortChanged(int index)
+{
+    if(mModel)
+        mModel->sortFiles(mSortBox->currentIndex(), mSortStyleBox->currentIndex());
+}
 
 // https://doc.qt.io/qt-5/dnd.html
 void
@@ -426,6 +443,8 @@ MainWindow::readSettings()
     mSettings->beginGroup("General");
     mLastPath = mSettings->value("lastPath", "").toString();
     menuBar()->setHidden(mSettings->value("menuHidden", false).toBool());
+    mSortBox->setCurrentIndex(mSettings->value("sortBy", 0).toInt());
+    mSortStyleBox->setCurrentIndex(mSettings->value("sortStyle", 0).toInt());
     mSettings->endGroup();
 
     mSettings->beginGroup("MainWindow");
@@ -448,6 +467,8 @@ MainWindow::writeSettings()
     mSettings->beginGroup("General");
     mSettings->setValue("lastPath", mLastPath);
     mSettings->setValue("menuHidden", menuBar()->isHidden());
+    mSettings->setValue("sortBy", mSortBox->currentIndex());
+    mSettings->setValue("sortStyle", mSortStyleBox->currentIndex());
     mSettings->endGroup();
 
     mSettings->beginGroup("MainWindow");

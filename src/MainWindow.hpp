@@ -3,6 +3,8 @@
 #include <QWidget>
 #include <QMainWindow>
 #include <QItemSelection>
+#include <qbuttongroup.h>
+#include <qpushbutton.h>
 #include "FileData.hpp"
 
 class ThumbnailModel;
@@ -11,6 +13,9 @@ class TagWidget;
 class FilterWidget;
 class QCompleter;
 class QSettings;
+class QComboBox;
+class RadioButton;
+class ButtonGroup;
 
 class MainWindow : public QMainWindow
 {
@@ -26,6 +31,9 @@ private slots:
 
     void pathFilterChanged();
     void tagFilterChanged();
+
+    void sortChanged(int index);
+    void sortStyleChanged(int index);
 
     void handleSelection(const QItemSelection &selected, const QItemSelection &deselected);
     void query();
@@ -68,8 +76,11 @@ private:
     QAction *mExitAct;
     QAction *mAboutAct;
     QAction *mAboutQtAct;
-    QAction *mHideMenuAct;
+    // QAction *mHideMenuAct;
     QToolBar *mToolBar;
+
+    QComboBox *mSortBox;
+    QComboBox *mSortStyleBox;
 
     FilterWidget *mFilterPathWidget;
     FilterWidget *mFilterTagWidget;

@@ -1,5 +1,4 @@
 * better completer (complete tags by splitting from spaces), subclass QCompleter
-* regex filtering is too slow and freezing the system for a while
 * .nomedia-like feature
 * scripting support
 ** fetch data automatically
@@ -11,3 +10,5 @@
 * cross-platform:
 ** handle double-click open
 * refresh button to catch file changes
+* Get rid of tmsu dependency
+** add, filter directly to database

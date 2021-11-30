@@ -1,11 +1,13 @@
 #include <QDebug>
-#include <QFileInfo>
 #include <QDir>
-#include <QSet>
 #include <QDirIterator>
+#include <QFileInfo>
+#include <QRegularExpression>
+#include <QSet>
 
 #include <algorithm>
 #include <qfileinfo.h>
+#include <qlist.h>
 
 #include "FileData.hpp"
 #include "MainWindow.hpp"
@@ -13,16 +15,10 @@
 #include "ThumbnailModel.hpp"
 
 
-ThumbnailModel::ThumbnailModel(QObject *parent)
+ThumbnailModel::ThumbnailModel(const QString& dbpath, int sortBy, int sortStyle, QObject *parent)
     : QAbstractListModel(parent), mJob(nullptr)
 {
-}
-
-
-void
-ThumbnailModel::load(const QString& dbpath)
-{
-    qDebug() << "ThumbnailModel::load()";
+    qDebug() << "ThumbnailModel::ThumbnailModel()";
 
     mDBPath = dbpath;
     qDebug() << "mDBPath:" << mDBPath;
@@ -31,7 +27,8 @@ ThumbnailModel::load(const QString& dbpath)
 
     clearData();
 
-    getFilesForData(getAllFiles());
+    createFileData(getAllFiles());
+    sort(mData, sortBy, sortStyle);
     getTagsForData();
 
     mFullData = mData;
@@ -40,23 +37,78 @@ ThumbnailModel::load(const QString& dbpath)
     startPreviewJob();
 }
 
+
 void
-ThumbnailModel::load(const QStringList& files)
+ThumbnailModel::resetToAll()
 {
-    qDebug() << "ThumbnailModel::load(files)";
-
     clearData();
-
-    if(files.isEmpty()) {
-        return;
-    }
-
-    getFilesForData(files);
-    getTagsForData();
-
-    // start preview job
+    mData = mFullData;
     startPreviewJob();
 }
+
+
+void
+ThumbnailModel::filterByRegex(const QString &text)
+{
+    QList<FileData> filtered;
+    QRegularExpression regex(text, QRegularExpression::CaseInsensitiveOption);
+    for(int i=0; i<mData.size(); i++) {
+        if (mData[i].url.path().contains(regex)) {
+            filtered.append(mData[i]);
+        }
+    }
+    clearData();
+    mData = filtered;
+    startPreviewJob();
+}
+
+void
+ThumbnailModel::filterByFiles(const QSet<QString> &files)
+{
+    QList<FileData> filtered;
+    for(int i=0; i<mFullData.size(); i++) {
+        if (files.contains(mFullData[i].url.path())) {
+            filtered.append(mFullData[i]);
+        }
+    }
+    clearData();
+    mData = filtered;
+    startPreviewJob();
+}
+
+void
+ThumbnailModel::sort(QList<FileData>& list, int byName, int ascending)
+{
+    // ascending
+    if (ascending == 0) {
+        // by name
+        if (byName == 0)
+            std::sort(list.begin(), list.end());
+        // by modified
+        else
+            std::sort(list.begin(), list.end(), FileData::modifiedRecent);
+    }
+    // descending
+    else {
+        // by name
+        if (byName == 0)
+            std::sort(list.rbegin(), list.rend());
+        // by modified
+        else
+            std::sort(list.rbegin(), list.rend(), FileData::modifiedRecent);
+    }
+}
+
+void
+ThumbnailModel::sortFiles(int byName, int ascending)
+{
+    auto temp = mData;
+    clearData();
+    sort(temp, byName, ascending);
+    mData = temp;
+    startPreviewJob();
+}
+
 
 void
 ThumbnailModel::clearData()
@@ -84,16 +136,13 @@ ThumbnailModel::getAllFiles()
 
 
 void
-ThumbnailModel::getFilesForData(const QStringList& files)
+ThumbnailModel::createFileData(const QStringList& files)
 {
     // GET FILEPATHS AND DEFAULT PIXMAPS
     for(int i=0; i<files.size(); i++) {
-        FileData fi;
-        fi.url = QUrl::fromLocalFile(files[i]);
-        fi.pm = QPixmap(256, 256);
+        FileData fi(QUrl::fromLocalFile(files[i]), QPixmap(256, 256));
         mData.append(fi);
     }
-    std::sort(mData.begin(), mData.end());
 }
 
 void
@@ -256,13 +305,6 @@ ThumbnailModel::getSelectedPaths()
     while (i.hasNext())
         paths.append(mData[i.next()].url.path());
     return paths;
-}
-
-
-bool
-ThumbnailModel::hasSelected()
-{
-    return !mSelected.isEmpty();
 }
 
 

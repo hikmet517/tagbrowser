@@ -123,14 +123,15 @@ TMSU::query(const QString &query, const QString &wdir, QStringList &output)
     for(const auto& line : lines) {
         if(line.isEmpty())
             continue;
-        output.append(QDir(wdir + "/" + line).canonicalPath());
+        // line starts with "./"
+        output.append(wdir + line.mid(1));
     }
     return res;
 }
 
 
 int
-TMSU::untagged(QString &wdir, QStringList &output)
+TMSU::untagged(const QString &wdir, QStringList &output)
 {
     qDebug() << "TMSU::untagged()";
     QProcess p;
