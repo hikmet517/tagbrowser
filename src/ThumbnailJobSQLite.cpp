@@ -5,7 +5,6 @@
 #include <QDir>
 #include <QUrl>
 #include <QStandardPaths>
-#include <QPixmap>
 #include <QBuffer>
 #include <QCryptographicHash>
 #include <QDebug>
@@ -27,7 +26,7 @@ ThumbnailJobSQLite::ThumbnailJobSQLite()
 }
 
 
-QVariant
+optional<QPixmap>
 ThumbnailJobSQLite::getThumbnail(const QString &filepath)
 {
     // qDebug() << "ThumbnailJobSQLite::getThumbnail()";
@@ -36,7 +35,7 @@ ThumbnailJobSQLite::getThumbnail(const QString &filepath)
     if ( !QFileInfo(dbPath).exists() ) {
         // db file doesn't exist, create db
         createDb(dbPath);
-        return false;
+        return {};
     }
     else {
         // db file exists, query db
@@ -52,7 +51,7 @@ ThumbnailJobSQLite::getThumbnail(const QString &filepath)
         // and query
         return getThumbnailFromDb(db, filepath);
     }
-    return false;
+    return {};
 }
 
 
@@ -104,18 +103,22 @@ ThumbnailJobSQLite::createDb(const QString &dbPath)
 }
 
 
-QVariant
+optional<QPixmap>
 ThumbnailJobSQLite::getThumbnailFromDb(sqlite3 *db, const QString &filepath)
 {
-    // qDebug() << "ThumbnailJobSQLite::getThumbnailFromDb()";
+    // qDebug() << "ThumbnailJobSQLite::getThumbnailFromDb()" << filepath;
     sqlite3_stmt *ppStmt;
     char sql[] = "SELECT thumbnail FROM THUMBNAILS WHERE file=?";
     int rc = sqlite3_prepare_v2(db, sql, -1, &ppStmt, NULL);
     if(rc != SQLITE_OK || ppStmt == NULL) {
         std::cerr << "getThumbnailFromDb Error in sqlite3_prepare_v2, returned: " << rc << std::endl;
+        return {};
     }
-    else {
-        sqlite3_bind_text(ppStmt, 1, QFileInfo(filepath).fileName().toUtf8().data(), -1, SQLITE_STATIC);
+
+    rc = sqlite3_bind_text(ppStmt, 1, QFileInfo(filepath).fileName().toUtf8().data(), -1, SQLITE_STATIC);
+    if(rc != SQLITE_OK) {
+        std::cerr << "getThumbnailFromDb Error in sqlite3_bind_text, returned: " << rc << std::endl;
+        return {};
     }
 
     std::vector<unsigned char> buffer;
@@ -124,18 +127,21 @@ ThumbnailJobSQLite::getThumbnailFromDb(sqlite3 *db, const QString &filepath)
         if (rc == SQLITE_DONE)
             break;
         else if (rc == SQLITE_ROW) {
-            const void *data = sqlite3_column_blob(ppStmt, 0);
+            const char *data = (char*)sqlite3_column_blob(ppStmt, 0);
             int size = sqlite3_column_bytes(ppStmt, 0);
-            for(int i=0; i<size; i++)
-                buffer.push_back(((char*)data)[i]);
+            buffer.insert(buffer.end(), data, data + size);
         }
         else {
             std::cerr << "getThumbnailFromDb Error in sqlite3_step, returned: " << rc << std::endl;
             sqlite3_reset(ppStmt);
             sqlite3_finalize(ppStmt);
-            return false;
+            return {};
         }
     }
+
+    // file is not in database
+    if(buffer.empty())
+        return {};
 
     QPixmap pm;
     pm.loadFromData((uchar*)&buffer[0], buffer.size());

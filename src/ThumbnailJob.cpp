@@ -5,8 +5,6 @@
 #include <QPixmap>
 #include <QIcon>
 #include <QDebug>
-#include <qnamespace.h>
-#include <qpixmap.h>
 
 #include "ThumbnailJob.hpp"
 
@@ -34,11 +32,9 @@ ThumbnailJob::getThumbnails(int beg, int end)
         QString subType = types[1];
 
         // check cached db first
-        QVariant res = sqlite.getThumbnail(filepath);
-        QPixmap pm = res.value<QPixmap>();
-        bool dbSuccessful = !pm.isNull();
-        if(dbSuccessful) {
-            emit thumbnailReady(filepath, alignPixmap(pm));
+        optional<QPixmap> res = sqlite.getThumbnail(filepath);
+        if(res.has_value()) {
+            emit thumbnailReady(filepath, alignPixmap(res.value()));
             continue;
         }
 
