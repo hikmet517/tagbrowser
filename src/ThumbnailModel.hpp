@@ -22,7 +22,7 @@ public:
 
     void filterByRegex(const QString &text);
     void filterByFiles(const QSet<QString> &text);
-    void sortFiles(int byName, int ascending);
+    void sortFiles(int sortBy, int sortStyle);
 
     // overrides for model
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
@@ -48,12 +48,12 @@ public:
 private:
     void createFileData(const QStringList& files);
     void clearData();
-    void sort(QList<FileData>& list, int byName, int ascending);
+    void sort(QVector<FileData>& list, int sortBy, int sortStyle);
     QStringList getAllFiles();
     void startPreviewJob();
 
-    QList<FileData> mData;
-    QList<FileData> mFullData;
+    QVector<FileData> mData;
+    QVector<FileData> mFullData;
     QString mDBPath;
     QString mRootPath;
     QStringList mAllTags;

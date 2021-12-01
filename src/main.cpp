@@ -1,13 +1,11 @@
 #include <QApplication>
 #include <QCommandLineParser>
 #include <QDebug>
-#include <QDir>
 #include <QLoggingCategory>
 
 #include <iostream>
 
 #include "MainWindow.hpp"
-#include "TagEdit.hpp"
 
 
 int main(int argc, char *argv[])
@@ -28,7 +26,7 @@ int main(int argc, char *argv[])
     MainWindow mw;
     if(parser.positionalArguments().size() != 0) {
         QString dir = parser.positionalArguments().at(0);
-        mw.startModelView(QDir(dir).canonicalPath());
+        mw.startModelView(dir);
     }
 
     mw.show();

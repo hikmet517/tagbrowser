@@ -8,8 +8,7 @@
 
 #include "TMSU.hpp"
 
-
-QString
+optional<QString>
 TMSU::getDatabasePath(const QString& dirpath)
 {
     QDir dir(dirpath);
@@ -24,7 +23,7 @@ TMSU::getDatabasePath(const QString& dirpath)
     }
     while(dir.cdUp());
     std::cerr << "Cannot find TMSU database." << std::endl;
-    return "";
+    return {};
 }
 
 

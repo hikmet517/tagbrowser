@@ -50,7 +50,7 @@ ThumbnailModel::resetToAll()
 void
 ThumbnailModel::filterByRegex(const QString &text)
 {
-    QList<FileData> filtered;
+    QVector<FileData> filtered;
     QRegularExpression regex(text, QRegularExpression::CaseInsensitiveOption);
     for(int i=0; i<mData.size(); i++) {
         if (mData[i].url.path().contains(regex)) {
@@ -65,7 +65,7 @@ ThumbnailModel::filterByRegex(const QString &text)
 void
 ThumbnailModel::filterByFiles(const QSet<QString> &files)
 {
-    QList<FileData> filtered;
+    QVector<FileData> filtered;
     for(int i=0; i<mFullData.size(); i++) {
         if (files.contains(mFullData[i].url.path())) {
             filtered.append(mFullData[i]);
@@ -77,12 +77,12 @@ ThumbnailModel::filterByFiles(const QSet<QString> &files)
 }
 
 void
-ThumbnailModel::sort(QList<FileData>& list, int byName, int ascending)
+ThumbnailModel::sort(QVector<FileData>& list, int sortBy, int sortStyle)
 {
     // ascending
-    if (ascending == 0) {
+    if (sortStyle == 0) {
         // by name
-        if (byName == 0)
+        if (sortBy == 0)
             std::sort(list.begin(), list.end());
         // by modified
         else
@@ -91,7 +91,7 @@ ThumbnailModel::sort(QList<FileData>& list, int byName, int ascending)
     // descending
     else {
         // by name
-        if (byName == 0)
+        if (sortBy == 0)
             std::sort(list.rbegin(), list.rend());
         // by modified
         else
@@ -100,11 +100,11 @@ ThumbnailModel::sort(QList<FileData>& list, int byName, int ascending)
 }
 
 void
-ThumbnailModel::sortFiles(int byName, int ascending)
+ThumbnailModel::sortFiles(int sortBy, int sortStyle)
 {
     auto temp = mData;
     clearData();
-    sort(temp, byName, ascending);
+    sort(temp, sortBy, sortStyle);
     mData = temp;
     startPreviewJob();
 }
@@ -213,7 +213,6 @@ ThumbnailModel::data(const QModelIndex &index, int role) const
     }
     else if(role == Qt::DecorationRole){
         return mData[index.row()].pm;
-        // return QIcon::fromTheme("edit-undo").pixmap(256, 256);
     }
     return QVariant();
 }

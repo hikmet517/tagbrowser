@@ -1,14 +1,12 @@
 #include <QAction>
 #include <QApplication>
 #include <QComboBox>
-#include <QDateTime>
 #include <QDebug>
 #include <QDockWidget>
 #include <QDrag>
 #include <QDropEvent>
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QIcon>
 #include <QMainWindow>
 #include <QMenuBar>
 #include <QMessageBox>
@@ -21,11 +19,6 @@
 #include <QToolBar>
 
 #include <iostream>
-#include <qbuttongroup.h>
-#include <qcombobox.h>
-#include <qfileinfo.h>
-#include <qpushbutton.h>
-#include <qradiobutton.h>
 
 #include "FileData.hpp"
 #include "FilterWidget.hpp"
@@ -180,9 +173,8 @@ MainWindow::startModelView(const QString& dir)
         mView->scrollToTop();
     }
 
-    QDir tempDir = QDir(QDir(dir).absolutePath());
-    QString path = tempDir.canonicalPath();
-    if(!path.isEmpty() && tempDir.exists()) {
+    QString path = QDir(dir).canonicalPath();
+    if(!path.isEmpty()) {
         mLastPath = path;
 
         mSelectAct->setEnabled(true);
@@ -194,7 +186,15 @@ MainWindow::startModelView(const QString& dir)
             delete mModel;
         }
         auto dbpath = TMSU::getDatabasePath(path);
-        mModel = new ThumbnailModel(dbpath, mSortBox->currentIndex(), mSortStyleBox->currentIndex(), this);
+        if(!dbpath.has_value()) {
+            QMessageBox msg = QMessageBox(QMessageBox::Information,
+                                          "TMSU database cannot be found",
+                                          "No database");
+            msg.exec();
+            exit(1);
+        }
+
+        mModel = new ThumbnailModel(dbpath.value(), mSortBox->currentIndex(), mSortStyleBox->currentIndex(), this);
 
         setWindowTitle(QCoreApplication::applicationName() + " — " + mModel->getRootPath());
 
