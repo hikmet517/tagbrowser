@@ -52,6 +52,9 @@ private:
     QStringList getAllFiles();
     void startPreviewJob();
 
+    int mSortBy = 0;
+    int mSortStyle = 0;
+
     QVector<FileData> mData;
     QVector<FileData> mFullData;
     QString mDBPath;

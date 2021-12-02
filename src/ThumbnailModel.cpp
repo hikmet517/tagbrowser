@@ -6,8 +6,6 @@
 #include <QSet>
 
 #include <algorithm>
-#include <qfileinfo.h>
-#include <qlist.h>
 
 #include "FileData.hpp"
 #include "MainWindow.hpp"
@@ -16,7 +14,7 @@
 
 
 ThumbnailModel::ThumbnailModel(const QString& dbpath, int sortBy, int sortStyle, QObject *parent)
-    : QAbstractListModel(parent), mJob(nullptr)
+    : QAbstractListModel(parent), mJob(nullptr), mSortBy(sortBy), mSortStyle(sortStyle)
 {
     qDebug() << "ThumbnailModel::ThumbnailModel()";
 
@@ -28,7 +26,7 @@ ThumbnailModel::ThumbnailModel(const QString& dbpath, int sortBy, int sortStyle,
     clearData();
 
     createFileData(getAllFiles());
-    sort(mData, sortBy, sortStyle);
+    sort(mData, mSortBy, mSortStyle);
     getTagsForData();
 
     mFullData = mData;
@@ -43,6 +41,7 @@ ThumbnailModel::resetToAll()
 {
     clearData();
     mData = mFullData;
+    sort(mData, mSortBy, mSortStyle);
     startPreviewJob();
 }
 
@@ -79,6 +78,11 @@ ThumbnailModel::filterByFiles(const QSet<QString> &files)
 void
 ThumbnailModel::sort(QVector<FileData>& list, int sortBy, int sortStyle)
 {
+    if(sortBy == 2) {
+        std::random_shuffle(list.begin(), list.end());
+        return;
+    }
+
     // ascending
     if (sortStyle == 0) {
         // by name
@@ -104,7 +108,9 @@ ThumbnailModel::sortFiles(int sortBy, int sortStyle)
 {
     auto temp = mData;
     clearData();
-    sort(temp, sortBy, sortStyle);
+    mSortBy = sortBy;
+    mSortStyle = sortStyle;
+    sort(temp, mSortBy, mSortStyle);
     mData = temp;
     startPreviewJob();
 }
@@ -151,7 +157,7 @@ ThumbnailModel::getTagsForData()
     // GET TAGS
     QList<QList<QString>> tags = TMSU::getTags(mDBPath);
 
-    // create a hash set and a list of all tags
+    // create a hash set (tagHashSet) and a list of all tags (mAllTags)
     QSet<QString> allTags;
     QHash<QString, QSet<QString>> tagHashSet;
     for(int i=0; i<tags.size(); i++){

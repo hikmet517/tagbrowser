@@ -94,7 +94,7 @@ MainWindow::setupBasics()
     // connect(mHideMenuAct, &QAction::triggered, this, &MainWindow::toggleMenuHide);
 
     mSortBox = new QComboBox(this);
-    mSortBox->insertItems(0, {"Name", "Modified"});
+    mSortBox->insertItems(0, {"Name", "Modified", "Shuffled"});
     connect(mSortBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::sortChanged);
 
     mSortStyleBox = new QComboBox(this);
@@ -269,6 +269,8 @@ void
 MainWindow::addTag(const QString& tag)
 {
     qDebug() << "MainWindow::addTag()";
+    if(tag.isEmpty())
+        return;
     int res = TMSU::addTag(tag, mModel->getSelectedPaths());
     if(res == 0) {
         mModel->getTagsForData();
