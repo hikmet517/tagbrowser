@@ -6,6 +6,7 @@
 #include <QSet>
 
 #include <algorithm>
+#include <random>
 
 #include "FileData.hpp"
 #include "MainWindow.hpp"
@@ -79,7 +80,9 @@ void
 ThumbnailModel::sort(QVector<FileData>& list, int sortBy, int sortStyle)
 {
     if(sortBy == 2) {
-        std::random_shuffle(list.begin(), list.end());
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(list.begin(), list.end(), g);
         return;
     }
 
