@@ -261,6 +261,7 @@ ThumbnailModel::startPreviewJob()
     for(int i=0; i<mData.size(); i++)
         files.append(mData[i].url.path());
 
+    mJob.requestInterruption();
     mJob.quit();
     mJob.wait();
 
