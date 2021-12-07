@@ -34,7 +34,13 @@ ThumbnailModel::loadData(const QString &dir)
     startPreviewJob();
 
     // get Tags
-    mDBPath = TMSU::getDatabasePath(mDir);
+    auto temp = TMSU::getDatabasePath(mDir);
+    if(!temp.has_value()) {
+        qDebug() << "cannot find db path";
+        return;
+    }
+    mDBPath = temp.value();
+    qDebug() << "mDBPath:" << mDBPath;
     mRootPath = QFileInfo(QFileInfo(mDBPath).dir().path()).dir().path();
     getTagsFromDB();
 }
@@ -44,7 +50,7 @@ void
 ThumbnailModel::getFilesFromDir(const QString& dir)
 {
     QDirIterator it(dir, QDir::Files, QDirIterator::Subdirectories);
-    while (it.hasNext()){
+    while (it.hasNext()) {
         FileData fi;
         fi.url = QUrl::fromLocalFile(it.next());
         fi.pm = QPixmap(256, 256);
@@ -64,6 +70,8 @@ ThumbnailModel::getTagsFromDB()
     qDebug() << "ThumbnailModel::getTagsFromDB()";
     // read db
     QList<QList<QString>> tags = TMSU::getTags(mDBPath);
+    qDebug() << mDBPath;
+    qDebug() << tags.size();
 
     // create a hash set and a list of all tags
     QSet<QString> allTags;
@@ -106,6 +114,7 @@ ThumbnailModel::rowCount(const QModelIndex &parent) const
 QVariant
 ThumbnailModel::data(const QModelIndex &index, int role) const
 {
+    // qDebug() << "data" << index.row();
     // qDebug() << "ThumbnailModel::data()";
     if(role == Qt::DisplayRole) {
         return mData[index.row()].url.fileName();
@@ -114,6 +123,8 @@ ThumbnailModel::data(const QModelIndex &index, int role) const
         return mData[index.row()].url.path();
     }
     else if(role == Qt::DecorationRole){
+        if (!mData[index.row()].hasPm)
+            emit prepareThumbnail(mData[index.row()].url.path());
         return mData[index.row()].pm;
     }
     return QVariant();
@@ -123,23 +134,15 @@ ThumbnailModel::data(const QModelIndex &index, int role) const
 void
 ThumbnailModel::startPreviewJob()
 {
-    QStringList files;
-    for(int i=0; i<mData.size(); i++)
-        files.append(mData[i].url.path());
+    mJob.quit();
+    mJob.wait();
 
-    if(mJob) {
-        if(mJob->isRunning()) {
-            mJob->requestInterruption();
-            connect(mJob, &ThumbnailJob::finished, mJob, &QObject::deleteLater);
-        }
-        else {
-            delete mJob;
-        }
-    }
-
-    mJob = new ThumbnailJob(files, this);
-    connect(mJob, &ThumbnailJob::thumbnailReady, this, &ThumbnailModel::handleThumbnail);
-    mJob->start();
+    ThumbnailJob *job = new ThumbnailJob(this);
+    job->moveToThread(&mJob);
+    connect(&mJob, &QThread::finished, job, &QObject::deleteLater);
+    connect(this, &ThumbnailModel::prepareThumbnail, job, &ThumbnailJob::getThumbnail);
+    connect(job, &ThumbnailJob::thumbnailReady, this, &ThumbnailModel::handleThumbnail);
+    mJob.start();
 }
 
 
@@ -149,6 +152,7 @@ ThumbnailModel::handleThumbnail(const QString &filepath, const QPixmap &pm)
     for(int i=0; i<mData.size(); i++){
         if(mData[i].url.path() == filepath) {
             mData[i].pm = pm;
+            mData[i].hasPm = true;
             QModelIndex topLeft = createIndex(i, 0);
             emit dataChanged(topLeft, topLeft, {Qt::DecorationRole});
             break;
@@ -185,12 +189,6 @@ ThumbnailModel::getSelectedPaths()
     return paths;
 }
 
-bool
-ThumbnailModel::hasSelected()
-{
-    return !mSelected.isEmpty();
-}
-
 
 QStringList
 ThumbnailModel::getAllTags()
@@ -202,14 +200,6 @@ ThumbnailModel::getAllTags()
 ThumbnailModel::~ThumbnailModel()
 {
     qDebug() << "ThumbnailModel::~ThumbnailModel()";
-    if(mJob) {
-        if(mJob->isRunning()) {
-            mJob->requestInterruption();
-            connect(mJob, &ThumbnailJob::finished, mJob, &QObject::deleteLater);
-            mJob->wait();
-        }
-        else {
-            delete mJob;
-        }
-    }
+    mJob.quit();
+    mJob.wait();
 }

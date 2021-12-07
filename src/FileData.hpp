@@ -7,6 +7,7 @@
 struct FileData{
     QUrl url;
     QPixmap pm;
+    bool hasPm = false;
     QSet<QString> tags;
     friend bool operator< (const FileData& left, const FileData& right) {
         return QString::compare(left.url.path(), right.url.path(), Qt::CaseInsensitive) < 0;

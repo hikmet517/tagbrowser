@@ -8,8 +8,7 @@
 
 #include "TMSU.hpp"
 
-
-QString
+optional<QString>
 TMSU::getDatabasePath(const QString& dirpath)
 {
     QDir dir(dirpath);
@@ -24,7 +23,7 @@ TMSU::getDatabasePath(const QString& dirpath)
     }
     while(dir.cdUp());
     std::cerr << "Cannot find TMSU database." << std::endl;
-    return "";
+    return {};
 }
 
 
@@ -48,22 +47,32 @@ TMSU::getTags(const QString& dbPath)
     sqlite3 *db;
     char *zErrMsg = 0;
     int rc = sqlite3_open(dbPath.toStdString().c_str(), &db);
-    if(rc){
-        std::cerr << "DB Error: " << sqlite3_errmsg(db) << std::endl;
+    if(rc) {
+        std::cerr << "sqlite3_open failed: " << sqlite3_errmsg(db) << std::endl;
         sqlite3_close(db);
         return {};
     }
 
-    char sql[] = "SELECT file.directory, file.name AS filename, tag.name AS tag, value.name AS value FROM \
-                  file \
-                  INNER JOIN file_tag ON file.id = file_tag.file_id \
-                  INNER JOIN tag ON file_tag.tag_id = tag.id \
-                  LEFT JOIN value ON file_tag.value_id = value.id";
+    char sql[] = " \
+SELECT file.directory, file.name AS filename, tag.name AS tag, value.name AS value FROM file \
+INNER JOIN (WITH RECURSIVE tags (file_id, tag_id, value_id) AS ( \
+               SELECT file_id, tag_id, value_id FROM file_tag \
+             UNION ALL \
+               SELECT file_id, implied_tag_id AS tag_id, implied_value_id AS value_id FROM \
+                      tags \
+                  INNER JOIN \
+                      implication \
+                          ON tags.tag_id = implication.tag_id AND tags.value_id =  implication.value_id \
+              ) \
+              SELECT * FROM tags) tags \
+      ON file.id = tags.file_id \
+INNER JOIN tag ON tags.tag_id = tag.id \
+LEFT JOIN value ON tags.value_id = value.id ";
 
     QList<QList<QString>> data;
     rc = sqlite3_exec(db, sql, callback, &data, &zErrMsg);
     if(rc) {
-        std::cerr << zErrMsg << std::endl;
+        std::cerr << "sqlite3_exec: " << zErrMsg << std::endl;
         sqlite3_free(zErrMsg);
     }
 
@@ -123,14 +132,15 @@ TMSU::query(const QString &query, const QString &wdir, QStringList &output)
     for(const auto& line : lines) {
         if(line.isEmpty())
             continue;
-        output.append(QDir(wdir + "/" + line).canonicalPath());
+        // line starts with "./"
+        output.append(wdir + line.mid(1));
     }
     return res;
 }
 
 
 int
-TMSU::untagged(QString &wdir, QStringList &output)
+TMSU::untagged(const QString &wdir, QStringList &output)
 {
     qDebug() << "TMSU::untagged()";
     QProcess p;
