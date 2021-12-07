@@ -41,7 +41,7 @@ private slots:
     void handleThumbnail(const QString &filepath, const QPixmap &pm);
 
 private:
-    void getFilesFromDir(const QString& dir);
+    QList<FileData> getFilesFromDir(const QString& dir);
     void startPreviewJob();
 
     QThread mJob;

@@ -11,8 +11,10 @@ class ThumbnailView;
 class TagWidget;
 class FilterWidget;
 class FilterTagProxyModel;
+class SortProxyModel;
 class QCompleter;
 class QSettings;
+class QComboBox;
 
 class MainWindow : public QMainWindow
 {
@@ -27,6 +29,7 @@ private slots:
 
     void pathFilterChanged();
     void tagFilterChanged();
+    void sortChanged(int index);
 
     void handleSelection(const QItemSelection &selected, const QItemSelection &deselected);
     void openFile(const QModelIndex &index);
@@ -72,8 +75,12 @@ private:
     QAction *mHideMenuAct;
     QToolBar *mToolBar;
 
+    QComboBox *mSortBox;
+    QComboBox *mSortStyleBox;
+
     FilterWidget *mFilterPathWidget;
     FilterWidget *mFilterTagWidget;
     QSortFilterProxyModel *mFilterPathProxyModel;
     FilterTagProxyModel *mFilterTagProxyModel;
+    SortProxyModel *mSortProxyModel;
 };

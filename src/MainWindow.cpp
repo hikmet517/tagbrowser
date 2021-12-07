@@ -1,5 +1,6 @@
 #include <QAction>
 #include <QApplication>
+#include <QComboBox>
 #include <QDebug>
 #include <QDockWidget>
 #include <QDrag>
@@ -24,6 +25,7 @@
 #include "FilterTagProxyModel.hpp"
 #include "FilterWidget.hpp"
 #include "MainWindow.hpp"
+#include "SortProxyModel.hpp"
 #include "TMSU.hpp"
 #include "ThumbnailModel.hpp"
 #include "ThumbnailView.hpp"
@@ -31,7 +33,7 @@
 
 MainWindow::MainWindow()
     : QMainWindow(), mSettings(nullptr), mView(nullptr), mModel(nullptr), mDock(nullptr), mTagWidget(nullptr),
-      mFilterPathProxyModel(nullptr), mFilterTagProxyModel(nullptr)
+      mFilterPathProxyModel(nullptr), mFilterTagProxyModel(nullptr), mSortProxyModel(nullptr)
 {
     qDebug() << "MainWindow::MainWindow()";
     mSettings = new QSettings(this);
@@ -64,8 +66,8 @@ MainWindow::setupBasics()
     mClearAct->setDisabled(true);
 
     mFilterPathWidget = new FilterWidget(tr("Filter by path using regex"),
-                                         {".*.(mp4|avi|mkv|mov|wmv|webm)$",
-                                          ".*.(jpg|jpeg|png|bmp|gif|webp)"}, this);
+                                         {"^.*.(mp4|avi|mkv|mov|wmv|webm)$",
+                                          "^.*.(jpg|jpeg|png|bmp|gif|webp)$"}, this);
     connect(mFilterPathWidget, &FilterWidget::returnPressed, this, &MainWindow::pathFilterChanged);
     mFilterPathWidget->setDisabled(true);
 
@@ -95,6 +97,14 @@ MainWindow::setupBasics()
     mHideMenuAct->setIcon(QIcon::fromTheme("show-menu"));
     connect(mHideMenuAct, &QAction::triggered, this, &MainWindow::toggleMenuHide);
 
+    mSortBox = new QComboBox(this);
+    mSortBox->insertItems(0, {"Name", "Modified"});
+    connect(mSortBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::sortChanged);
+
+    mSortStyleBox = new QComboBox(this);
+    mSortStyleBox->insertItems(0, {"Ascending", "Descending"});
+    connect(mSortStyleBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::sortChanged);
+
 
     // setup toolbar
     mToolBar = new QToolBar(this);
@@ -105,8 +115,10 @@ MainWindow::setupBasics()
     mToolBar->addAction(mSelectAct);
     mToolBar->addAction(mClearAct);
     mToolBar->addAction(mHideMenuAct);
-    mToolBar->addWidget(mFilterPathWidget);
     mToolBar->addWidget(mFilterTagWidget);
+    mToolBar->addWidget(mFilterPathWidget);
+    mToolBar->addWidget(mSortBox);
+    mToolBar->addWidget(mSortStyleBox);
     mToolBar->addWidget(mFiller);
     mToolBar->addAction(mExitAct);
     addToolBar(mToolBar);
@@ -199,12 +211,19 @@ MainWindow::startModelView(const QString& dir)
         if(mFilterTagProxyModel == nullptr) {
             mFilterTagProxyModel = new FilterTagProxyModel(this);
             mFilterTagProxyModel->setSourceModel(mFilterPathProxyModel);
-            mView->setModel(mFilterTagProxyModel);
         }
         else {
             mFilterTagProxyModel->setFilterFixedString("");
             mFilterTagProxyModel->invalidate();
         }
+
+        if(mSortProxyModel == nullptr) {
+            mSortProxyModel = new SortProxyModel;
+            mSortProxyModel->setSourceModel(mFilterTagProxyModel);
+        }
+        mView->setModel(mSortProxyModel);
+        sortChanged(0);
+
 
         connect(mView->selectionModel(), &QItemSelectionModel::selectionChanged,
                 this, &MainWindow::handleSelection, Qt::UniqueConnection);
@@ -226,10 +245,10 @@ MainWindow::handleSelection(const QItemSelection &selected, const QItemSelection
 {
     qDebug() << "MainWindow::handleSelection()";
     for(const auto& index : selected.indexes()) {
-        mModel->addSelected(mFilterPathProxyModel->mapToSource(mFilterTagProxyModel->mapToSource(index)).row());
+        mModel->addSelected(mFilterPathProxyModel->mapToSource(mFilterTagProxyModel->mapToSource(mSortProxyModel->mapToSource(index))).row());
     }
     for(const auto& index : deselected.indexes()) {
-        mModel->removeSelected(mFilterPathProxyModel->mapToSource(mFilterTagProxyModel->mapToSource(index)).row());
+        mModel->removeSelected(mFilterPathProxyModel->mapToSource(mFilterTagProxyModel->mapToSource(mSortProxyModel->mapToSource(index))).row());
     }
     int selectedSize = mModel->getSelectedSize();
     if(selectedSize != 0)
@@ -245,7 +264,7 @@ MainWindow::openFile(const QModelIndex &index)
 {
     qDebug() << "MainWindow::openFile()";
     // for windows start (cmd) or Invoke-Item (powershell)
-    int i = mFilterPathProxyModel->mapToSource(mFilterTagProxyModel->mapToSource(index)).row();
+    int i = mFilterPathProxyModel->mapToSource(mFilterTagProxyModel->mapToSource(mSortProxyModel->mapToSource(index))).row();
     QProcess::startDetached("xdg-open", QStringList() << mModel->getFilePath(i));
 }
 
@@ -254,7 +273,7 @@ void
 MainWindow::openContainingFolder(const QModelIndex &index)
 {
     qDebug() << "MainWindow::openFile()";
-    int i = mFilterPathProxyModel->mapToSource(mFilterTagProxyModel->mapToSource(index)).row();
+    int i = mFilterPathProxyModel->mapToSource(mFilterTagProxyModel->mapToSource(mSortProxyModel->mapToSource(index))).row();
     QString dir = QFileInfo(mModel->getFilePath(i)).dir().path();
     QProcess::startDetached("xdg-open", QStringList() << dir);
 }
@@ -357,6 +376,17 @@ MainWindow::tagFilterChanged()
 }
 
 
+void
+MainWindow::sortChanged(int index)
+{
+    qDebug() << "sortChanged";
+    if(!mModel)
+        return;
+    mSortProxyModel->setSortParams(mSortBox->currentIndex(), mSortStyleBox->currentIndex());
+    mSortProxyModel->invalidate();
+    mSortProxyModel->sort(0);
+}
+
 
 // https://doc.qt.io/qt-5/dnd.html
 void
@@ -408,6 +438,8 @@ MainWindow::readSettings()
     mSettings->beginGroup("General");
     mLastPath = mSettings->value("lastPath", "").toString();
     menuBar()->setHidden(mSettings->value("menuHidden", false).toBool());
+    mSortBox->setCurrentIndex(mSettings->value("sortBy", 0).toInt());
+    mSortStyleBox->setCurrentIndex(mSettings->value("sortStyle", 0).toInt());
     mSettings->endGroup();
 
     mSettings->beginGroup("MainWindow");
@@ -430,6 +462,8 @@ MainWindow::writeSettings()
     mSettings->beginGroup("General");
     mSettings->setValue("lastPath", mLastPath);
     mSettings->setValue("menuHidden", menuBar()->isHidden());
+    mSettings->setValue("sortBy", mSortBox->currentIndex());
+    mSettings->setValue("sortStyle", mSortStyleBox->currentIndex());
     mSettings->endGroup();
 
     mSettings->beginGroup("MainWindow");

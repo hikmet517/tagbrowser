@@ -17,12 +17,3 @@ FilterTagProxyModel::filterAcceptsRow(int sourceRow, const QModelIndex &sourcePa
     QString data = sourceModel()->data(index, Qt::ToolTipRole).toString();
     return mFilteredData.contains(data);
 }
-
-// bool
-// FilterTagProxyModel::lessThan(const QModelIndex &left,
-//                                const QModelIndex &right) const
-// {
-//     QVariant leftData = sourceModel()->data(left);
-//     QVariant rightData = sourceModel()->data(right);
-
-// }

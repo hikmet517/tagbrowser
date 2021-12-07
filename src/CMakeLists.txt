@@ -17,6 +17,8 @@ set(tagbrowser_SOURCES
   FilterWidget.cpp
   FilterTagProxyModel.hpp
   FilterTagProxyModel.cpp
+  SortProxyModel.hpp
+  SortProxyModel.cpp
   ThumbnailJob.hpp
   ThumbnailJob.cpp
   ThumbnailJobSQLite.hpp

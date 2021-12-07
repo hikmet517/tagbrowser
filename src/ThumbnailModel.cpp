@@ -4,6 +4,8 @@
 #include <QSet>
 
 #include <algorithm>
+#include <qnamespace.h>
+#include <random>
 
 #include "MainWindow.hpp"
 #include "TMSU.hpp"
@@ -25,11 +27,15 @@ ThumbnailModel::loadData(const QString &dir)
     // clear old data
     beginResetModel();
     mData.clear();
+    mSelected.clear();
     endResetModel();
 
     // prepare data
-    getFilesFromDir(dir);
-    std::sort(mData.begin(), mData.end());
+    QList<FileData> tempData = getFilesFromDir(dir);
+    beginInsertRows(QModelIndex(), 0, tempData.size()-1);
+    mData = tempData;
+    endInsertRows();
+
     // start preview job
     startPreviewJob();
 
@@ -46,21 +52,16 @@ ThumbnailModel::loadData(const QString &dir)
 }
 
 
-void
+QList<FileData>
 ThumbnailModel::getFilesFromDir(const QString& dir)
 {
+    QList<FileData> data;
     QDirIterator it(dir, QDir::Files, QDirIterator::Subdirectories);
     while (it.hasNext()) {
-        FileData fi;
-        fi.url = QUrl::fromLocalFile(it.next());
-        fi.pm = QPixmap(256, 256);
-
-        // https://itqna.net/questions/52854/reset-qabstractlistmodel
-        int rows = rowCount();
-        beginInsertRows(QModelIndex(), rows, rows);
-        mData.append(fi);
-        endInsertRows();
+        FileData fi(QUrl::fromLocalFile(it.next()), QPixmap(256, 256));
+        data.append(fi);
     }
+    return data;
 }
 
 
@@ -100,7 +101,6 @@ ThumbnailModel::getTagsFromDB()
             mData[i].tags.clear();
     }
 }
-
 
 
 int
