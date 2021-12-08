@@ -127,6 +127,9 @@ ThumbnailModel::data(const QModelIndex &index, int role) const
             emit prepareThumbnail(mData[index.row()].url.path());
         return mData[index.row()].pm;
     }
+    else if(role == Qt::UserRole) {
+        return mData[index.row()].modified;
+    }
     return QVariant();
 }
 

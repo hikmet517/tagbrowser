@@ -221,8 +221,9 @@ MainWindow::startModelView(const QString& dir)
             mSortProxyModel = new SortProxyModel;
             mSortProxyModel->setSourceModel(mFilterTagProxyModel);
         }
-        mView->setModel(mSortProxyModel);
         sortChanged(0);
+
+        mView->setModel(mSortProxyModel);
 
 
         connect(mView->selectionModel(), &QItemSelectionModel::selectionChanged,
