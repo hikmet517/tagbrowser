@@ -11,12 +11,15 @@ struct FileData{
     bool hasPm = false;
     QSet<QString> tags;
     QDateTime modified;
+    qint64 size;
 
     FileData() {};
 
     FileData(const QUrl& u, const QPixmap& p, bool hasP=false, const QSet<QString>& t = {})
         : url(u), pm(p), hasPm(hasP), tags(t) {
-        modified = QFileInfo(u.path()).lastModified();
+        QFileInfo fi(u.path());
+        modified = fi.lastModified();
+        size = fi.size();
     };
 
     // friend bool operator< (const FileData& left, const FileData& right) {
@@ -28,4 +31,4 @@ struct FileData{
     // };
 };
 
-// Q_DECLARE_METATYPE(FileData);
+Q_DECLARE_METATYPE(FileData);

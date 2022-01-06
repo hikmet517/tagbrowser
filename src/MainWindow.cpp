@@ -98,7 +98,7 @@ MainWindow::setupBasics()
     connect(mHideMenuAct, &QAction::triggered, this, &MainWindow::toggleMenuHide);
 
     mSortBox = new QComboBox(this);
-    mSortBox->insertItems(0, {"Name", "Modified"});
+    mSortBox->insertItems(0, {"Name", "Modified", "Size"});
     connect(mSortBox, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &MainWindow::sortChanged);
 
     mSortStyleBox = new QComboBox(this);
@@ -188,8 +188,18 @@ MainWindow::startModelView(const QString& dir)
         if(mModel == nullptr) {
             mModel = new ThumbnailModel(this);
         }
-        mModel->loadData(path);
-        setWindowTitle(QCoreApplication::applicationName() + " — " + mModel->getRootPath());
+
+        auto dbpath = TMSU::getDatabasePath(path);
+        if(!dbpath.has_value()) {
+            QMessageBox msg = QMessageBox(QMessageBox::Information,
+                                          "TMSU database cannot be found",
+                                          "No database");
+            msg.exec();
+            exit(1);
+        }
+
+        mModel->loadData(path, dbpath.value());
+        setWindowTitle(QCoreApplication::applicationName() + " — " + path);
 
         mFilterTagWidget->setEnabled(true);
         mFilterTagWidget->setCompletions(QStringList() << mModel->getAllTags() << "%UNTAGGED%");
@@ -221,7 +231,7 @@ MainWindow::startModelView(const QString& dir)
             mSortProxyModel = new SortProxyModel;
             mSortProxyModel->setSourceModel(mFilterTagProxyModel);
         }
-        sortChanged(0);
+        sortChanged();
 
         mView->setModel(mSortProxyModel);
 
@@ -383,6 +393,10 @@ MainWindow::sortChanged(int index)
     qDebug() << "sortChanged";
     if(!mModel)
         return;
+    mModel->clearSelected();
+    mView->clearSelection();
+    mView->scrollToTop();
+
     mSortProxyModel->setSortParams(mSortBox->currentIndex(), mSortStyleBox->currentIndex());
     mSortProxyModel->invalidate();
     mSortProxyModel->sort(0);

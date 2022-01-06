@@ -29,7 +29,7 @@ private slots:
 
     void pathFilterChanged();
     void tagFilterChanged();
-    void sortChanged(int index);
+    void sortChanged(int index=0);
 
     void handleSelection(const QItemSelection &selected, const QItemSelection &deselected);
     void openFile(const QModelIndex &index);

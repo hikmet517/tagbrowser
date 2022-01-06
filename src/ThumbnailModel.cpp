@@ -4,7 +4,6 @@
 #include <QSet>
 
 #include <algorithm>
-#include <qnamespace.h>
 #include <random>
 
 #include "MainWindow.hpp"
@@ -19,7 +18,7 @@ ThumbnailModel::ThumbnailModel(QObject *parent)
 
 
 void
-ThumbnailModel::loadData(const QString &dir)
+ThumbnailModel::loadData(const QString &dir, const QString &dbPath)
 {
     qDebug() << "ThumbnailModel::loadData()";
     mDir = dir;
@@ -31,37 +30,28 @@ ThumbnailModel::loadData(const QString &dir)
     endResetModel();
 
     // prepare data
-    QList<FileData> tempData = getFilesFromDir(dir);
-    beginInsertRows(QModelIndex(), 0, tempData.size()-1);
-    mData = tempData;
+    beginInsertRows(QModelIndex(), 0, mData.size()-1);
+    getFilesFromDir(dir);
     endInsertRows();
 
     // start preview job
     startPreviewJob();
 
     // get Tags
-    auto temp = TMSU::getDatabasePath(mDir);
-    if(!temp.has_value()) {
-        qDebug() << "cannot find db path";
-        return;
-    }
-    mDBPath = temp.value();
-    qDebug() << "mDBPath:" << mDBPath;
+    mDBPath = dbPath;
     mRootPath = QFileInfo(QFileInfo(mDBPath).dir().path()).dir().path();
     getTagsFromDB();
 }
 
 
-QList<FileData>
+void
 ThumbnailModel::getFilesFromDir(const QString& dir)
 {
-    QList<FileData> data;
-    QDirIterator it(dir, QDir::Files, QDirIterator::Subdirectories);
+    QDirIterator it(dir, QDir::Files | QDir::Hidden, QDirIterator::Subdirectories);
     while (it.hasNext()) {
         FileData fi(QUrl::fromLocalFile(it.next()), QPixmap(256, 256));
-        data.append(fi);
+        mData.append(fi);
     }
-    return data;
 }
 
 
@@ -128,7 +118,9 @@ ThumbnailModel::data(const QModelIndex &index, int role) const
         return mData[index.row()].pm;
     }
     else if(role == Qt::UserRole) {
-        return mData[index.row()].modified;
+        QVariant var;
+        var.setValue(mData[index.row()]);
+        return var;
     }
     return QVariant();
 }
@@ -152,7 +144,9 @@ ThumbnailModel::startPreviewJob()
 void
 ThumbnailModel::handleThumbnail(const QString &filepath, const QPixmap &pm)
 {
-    for(int i=0; i<mData.size(); i++){
+    for(int i=0; i<mData.size(); i++) {
+        if(mData[i].hasPm)
+            continue;
         if(mData[i].url.path() == filepath) {
             mData[i].pm = pm;
             mData[i].hasPm = true;

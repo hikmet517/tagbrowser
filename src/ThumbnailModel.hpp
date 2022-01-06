@@ -15,7 +15,7 @@ class ThumbnailModel : public QAbstractListModel
 public:
     ThumbnailModel(QObject *parent = nullptr);
     ~ThumbnailModel();
-    void loadData(const QString &dir);
+    void loadData(const QString &dir, const QString &dbPath);
 
     // getters
     void getTagsFromDB();
@@ -41,7 +41,7 @@ private slots:
     void handleThumbnail(const QString &filepath, const QPixmap &pm);
 
 private:
-    QList<FileData> getFilesFromDir(const QString& dir);
+    void getFilesFromDir(const QString& dir);
     void startPreviewJob();
 
     QThread mJob;
@@ -49,7 +49,6 @@ private:
     QSet<int> mSelected;
     QString mDir;
     QString mRootPath;
-    QMimeDatabase mMimeDB;
     QString mDBPath;
     QStringList mAllTags;
 
