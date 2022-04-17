@@ -135,7 +135,7 @@ ThumbnailModel::startPreviewJob()
     ThumbnailJob *job = new ThumbnailJob(this);
     job->moveToThread(&mJob);
     connect(&mJob, &QThread::finished, job, &QObject::deleteLater);
-    connect(this, &ThumbnailModel::prepareThumbnail, job, &ThumbnailJob::getThumbnail);
+    connect(this, &ThumbnailModel::prepareThumbnail, job, &ThumbnailJob::getThumbnail, Qt::QueuedConnection);
     connect(job, &ThumbnailJob::thumbnailReady, this, &ThumbnailModel::handleThumbnail);
     mJob.start();
 }

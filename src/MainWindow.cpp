@@ -352,6 +352,10 @@ MainWindow::pathFilterChanged()
     mView->scrollToTop();
     mFilterPathProxyModel->setFilterRegExp(mFilterPathWidget->text());
     statusBar()->showMessage(tr("%1 files").arg(mView->model()->rowCount()));
+
+    if (mFilterTagWidget->text() != mFilterTagProxyModel->filterRegExp().pattern()) {
+        tagFilterChanged();
+    }
 }
 
 void
@@ -383,6 +387,10 @@ MainWindow::tagFilterChanged()
     else {
         mFilterTagProxyModel->setFilterFixedString(query);
         statusBar()->showMessage(tr("%1 files").arg(mView->model()->rowCount()));
+    }
+
+    if (mFilterPathWidget->text() != mFilterPathProxyModel->filterRegExp().pattern()) {
+        pathFilterChanged();
     }
 }
 
